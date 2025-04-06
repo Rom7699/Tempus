@@ -30,20 +30,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Check for existing authenticated user on app start
     const checkUser = async () => {
       try {
-        const currentUser = await AuthService.getCurrentUser();
-        setUser(currentUser);
+        setLoading(true);
         
-        // Navigate based on authentication status
-        if (currentUser) {
-          router.replace('/(protected)/home');
-        } else {
-          router.replace('/(auth)/sign-in');
-        }
+        // Wait a bit to allow AsyncStorage to initialize properly
+        // This helps with some edge cases on app start
+        setTimeout(async () => {
+          try {
+            const currentUser = await AuthService.getCurrentUser();
+            
+            if (currentUser) {
+              // If we get here, user is authenticated
+              setUser(currentUser);
+            } else {
+              // User is not authenticated
+              setUser(null);
+            }
+          } catch (error) {
+            console.error('Error checking user authentication:', error);
+            // Clear any invalid session data
+            await AuthService.signOut();
+            setUser(null);
+          } finally {
+            setLoading(false);
+          }
+        }, 500); // Small delay to ensure AsyncStorage is ready
       } catch (error) {
-        console.error('Error checking user:', error);
-        router.replace('/(auth)/sign-in');
-      } finally {
+        console.error('Critical error in authentication check:', error);
         setLoading(false);
+        setUser(null);
       }
     };
 
