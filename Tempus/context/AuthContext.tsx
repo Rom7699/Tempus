@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const cognitoUser = await AuthService.signIn({ email, password });
       setUser(cognitoUser);
-      router.replace('/(protected)/home');
+      router.replace('/(tabs)/home');
     } catch (error) {
       console.error('Error signing in:', error);
       throw error;

@@ -85,9 +85,7 @@ export default function HomeScreen() {
             You are now signed in to your account
           </Text>
         </View>
-
-        <Calendar /> 
-        
+                
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Your Profile</Text>
           <View style={styles.profileItem}>

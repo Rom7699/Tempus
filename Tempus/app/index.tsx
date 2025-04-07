@@ -13,9 +13,10 @@ export default function Index() {
     const checkAuthentication = async () => {
       try {
         const currentUser = await AuthService.getCurrentUser();
+        console.log('Current user:', currentUser);
         setIsAuthenticated(!!currentUser);
       } catch (error) {
-        console.error('Error checking authentication:', error);
+        console.log('Error checking authentication:', error);
         setIsAuthenticated(false);
       } finally {
         setInitialCheckComplete(true);
@@ -43,7 +44,7 @@ export default function Index() {
 
   // Redirect based on authentication status
   return isAuthenticated ? 
-    <Redirect href="/(protected)/home" /> : 
+    <Redirect href="/(tabs)/home" /> : 
     <Redirect href="/(auth)/sign-in" />;
 }
 
