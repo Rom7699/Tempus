@@ -21,7 +21,8 @@ interface AddTaskModalProps {
   onSave: (task: {
     title: string;
     date: string;
-    time: string;
+    startTime: string;
+    endTime: string;
     reminder: boolean;
     category: 'inbox' | 'custom';
   }) => void;
@@ -36,10 +37,17 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(new Date());
-  const [time, setTime] = useState(new Date());
+  
+  // Replace single time with start and end times
+  const [startTime, setStartTime] = useState(new Date());
+  const [endTime, setEndTime] = useState(new Date(new Date().getTime() + 60*60*1000)); // Default to 1 hour later
+  
   const [reminder, setReminder] = useState(true);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
+  
+  // Replace single time picker state with two states
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   
   // Format the date for display
   const formatDate = (date: Date): string => {
@@ -78,20 +86,44 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     }
   };
   
-  // Handle time change
-  const onTimeChange = (event: any, selectedTime?: Date) => {
+  // Handle start time change
+  const onStartTimeChange = (event: any, selectedTime?: Date) => {
     if (event.type === 'dismissed') {
-      setShowTimePicker(false);
+      setShowStartTimePicker(false);
       return;
     }
     
     if (selectedTime) {
-      setTime(selectedTime);
+      setStartTime(selectedTime);
+      
+      // If end time is earlier than start time, update end time
+      if (selectedTime > endTime) {
+        // Set end time 1 hour after start time
+        setEndTime(new Date(selectedTime.getTime() + 60*60*1000));
+      }
     }
     
     // On Android, hide the picker after selection
     if (Platform.OS === 'android') {
-      setShowTimePicker(false);
+      setShowStartTimePicker(false);
+    }
+    console.log('Start Time:', selectedTime);
+  };
+  
+  // Handle end time change
+  const onEndTimeChange = (event: any, selectedTime?: Date) => {
+    if (event.type === 'dismissed') {
+      setShowEndTimePicker(false);
+      return;
+    }
+    
+    if (selectedTime) {
+      setEndTime(selectedTime);
+    }
+    
+    // On Android, hide the picker after selection
+    if (Platform.OS === 'android') {
+      setShowEndTimePicker(false);
     }
   };
   
@@ -99,7 +131,8 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const handleClose = () => {
     setTitle('');
     setDate(new Date());
-    setTime(new Date());
+    setStartTime(new Date());
+    setEndTime(new Date(new Date().getTime() + 60*60*1000));
     setReminder(true);
     onClose();
   };
@@ -110,10 +143,14 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       return; // Don't save empty tasks
     }
     
+    // Format date to YYYY-MM-DD for consistency
+    const formattedDate = date.toISOString().split('T')[0];
+    
     onSave({
       title: title.trim(),
-      date: formatDate(date),
-      time: formatTime(time),
+      date: formattedDate,
+      startTime: formatTime(startTime),
+      endTime: formatTime(endTime),
       reminder,
       category: 'inbox'
     });
@@ -173,15 +210,28 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
               </TouchableOpacity>
               
-              {/* Time Selection */}
+              {/* Start Time Selection */}
               <TouchableOpacity 
                 style={styles.optionRow}
-                onPress={() => setShowTimePicker(true)}
+                onPress={() => setShowStartTimePicker(true)}
               >
                 <Ionicons name="time-outline" size={22} color="#5D87FF" />
                 <View style={styles.optionTextContainer}>
-                  <Text style={styles.optionLabel}>Time</Text>
-                  <Text style={styles.optionValue}>{formatTime(time)}</Text>
+                  <Text style={styles.optionLabel}>Start Time</Text>
+                  <Text style={styles.optionValue}>{formatTime(startTime)}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
+              </TouchableOpacity>
+              
+              {/* End Time Selection */}
+              <TouchableOpacity 
+                style={styles.optionRow}
+                onPress={() => setShowEndTimePicker(true)}
+              >
+                <Ionicons name="timer-outline" size={22} color="#5D87FF" />
+                <View style={styles.optionTextContainer}>
+                  <Text style={styles.optionLabel}>End Time</Text>
+                  <Text style={styles.optionValue}>{formatTime(endTime)}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
               </TouchableOpacity>
@@ -249,36 +299,75 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               </>
             )}
             
-            {/* Time Picker (conditionally rendered) */}
-            {showTimePicker && (
+            {/* Start Time Picker */}
+            {showStartTimePicker && (
               <>
                 {Platform.OS === 'ios' ? (
                   <View style={styles.pickerContainer}>
                     <View style={styles.pickerHeader}>
-                      <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                      <TouchableOpacity onPress={() => setShowStartTimePicker(false)}>
                         <Text style={styles.pickerCancelButton}>Cancel</Text>
                       </TouchableOpacity>
-                      <Text style={styles.pickerTitle}>Select Time</Text>
-                      <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                      <Text style={styles.pickerTitle}>Select Start Time</Text>
+                      <TouchableOpacity onPress={() => setShowStartTimePicker(false)}>
                         <Text style={styles.pickerDoneButton}>Done</Text>
                       </TouchableOpacity>
                     </View>
                     <DateTimePicker
-                      testID="timePicker"
-                      value={time}
+                      testID="startTimePicker"
+                      value={startTime}
                       mode="time"
                       display="spinner"
-                      onChange={onTimeChange}
+                      is24Hour={true}
+                      onChange={onStartTimeChange}
                       style={styles.iosPicker}
                     />
                   </View>
                 ) : (
                   <DateTimePicker
-                    testID="timePicker"
-                    value={time}
+                    testID="startTimePicker"
+                    value={startTime}
+                    mode="time"
+                    is24Hour={true}
+                    display="default"
+                    onChange={onStartTimeChange}
+                  />
+                )}
+              </>
+            )}
+            
+            {/* End Time Picker */}
+            {showEndTimePicker && (
+              <>
+                {Platform.OS === 'ios' ? (
+                  <View style={styles.pickerContainer}>
+                    <View style={styles.pickerHeader}>
+                      <TouchableOpacity onPress={() => setShowEndTimePicker(false)}>
+                        <Text style={styles.pickerCancelButton}>Cancel</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.pickerTitle}>Select End Time</Text>
+                      <TouchableOpacity onPress={() => setShowEndTimePicker(false)}>
+                        <Text style={styles.pickerDoneButton}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      testID="endTimePicker"
+                      value={endTime}
+                      is24Hour={true}
+                      mode="time"
+                      display="spinner"
+                      onChange={onEndTimeChange}
+                      style={styles.iosPicker}
+                    />
+                  </View>
+                ) : (
+                  <DateTimePicker
+                    testID="endTimePicker"
+                    value={endTime}
+                    is24Hour={true}
                     mode="time"
                     display="default"
-                    onChange={onTimeChange}
+                    onChange={onEndTimeChange}
                   />
                 )}
               </>
@@ -289,6 +378,8 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     </Modal>
   );
 };
+
+// Styles remain mostly the same
 
 const styles = StyleSheet.create({
   centeredView: {

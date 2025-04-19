@@ -13,12 +13,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { CheckBox } from "react-native-elements";
 import FloatingActionButton from "../../components/AddTaskButton";
 import AddTaskModal from "../../components/AddTaskModal"; // Define types for our tasks
+import TaskItem from "../../components/TaskItem";
 
 interface Task {
   id: string;
   title: string;
   date: string;
-  time: string;
+  startTime: string;
+  endTime: string;
   completed: boolean;
   category: "inbox" | "custom";
   reminder?: boolean;
@@ -52,36 +54,6 @@ const Header: React.FC<{ title: string }> = ({ title }) => {
   );
 };
 
-// Task item component
-const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
-  const [checked, setChecked] = useState(task.completed);
-
-  return (
-    <View style={styles.taskItem}>
-      <CheckBox
-        checked={checked}
-        onPress={() => setChecked(!checked)}
-        containerStyle={styles.checkbox}
-      />
-      <View style={styles.taskContent}>
-        <Text style={styles.taskTitle}>{task.title}</Text>
-        <View style={styles.taskDetails}>
-          <Text style={styles.taskTime}>{task.time}</Text>
-          {task.reminder && (
-            <Ionicons
-              name="alarm-outline"
-              size={16}
-              color="#999"
-              style={styles.taskIcon}
-            />
-          )}
-        </View>
-      </View>
-      <Text style={styles.taskCategory}>Inbox</Text>
-    </View>
-  );
-};
-
 // Habit item component
 const HabitItem: React.FC<{ habit: Habit }> = ({ habit }) => {
   return (
@@ -95,6 +67,27 @@ const HabitItem: React.FC<{ habit: Habit }> = ({ habit }) => {
   );
 };
 
+function formatDateToShort(dateString: string): string {
+  const date = new Date(dateString);
+  const day = date.getDate();
+  const monthNames = [
+    "JAN",
+    "FEB",
+    "MAR",
+    "APR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AUG",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DEC",
+  ];
+  const month = monthNames[date.getMonth()];
+  return `${day} ${month}`;
+}
+
 // Main Calendar Screen component
 const CalendarScreen: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(
@@ -104,12 +97,13 @@ const CalendarScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState<boolean>(false);
 
   // Sample tasks data
-  const tasks: Task[] = [
+  const [tasks, setTasks] = useState<Task[]>([
     {
       id: "1",
       title: "Workout at the gym",
       date: new Date().toISOString().split("T")[0],
-      time: "Today, 10:00",
+      startTime: "10:00",
+      endTime: "11:00",
       completed: false,
       category: "inbox",
       reminder: true,
@@ -117,8 +111,9 @@ const CalendarScreen: React.FC = () => {
     {
       id: "2",
       title: "2 hours of leetcode",
-      date: new Date().toISOString().split("T")[0],
-      time: "Today, 12:00",
+      date: "2025-04-14",
+      startTime: "12:00",
+      endTime: "14:00",
       completed: false,
       category: "inbox",
       reminder: true,
@@ -126,33 +121,103 @@ const CalendarScreen: React.FC = () => {
     {
       id: "3",
       title: "Finish watching statistics lecture",
-      date: new Date().toISOString().split("T")[0],
-      time: "Today, 15:30",
+      date: "2025-04-16",
+      startTime: "15:30",
+      endTime: "16:30",
       completed: false,
       category: "inbox",
       reminder: true,
     },
-  ];
+    {
+      id: "4",
+      title: "Coffee with Prof. Johnson",
+      date: "2025-04-15",
+      startTime: "09:30",
+      endTime: "10:15",
+      completed: false,
+      category: "custom",
+      reminder: true,
+    },
+    {
+      id: "5",
+      title: "Weekly team standup",
+      date: "2025-04-14",
+      startTime: "09:00",
+      endTime: "09:30",
+      completed: true,
+      category: "inbox",
+      reminder: false,
+    },
+    {
+      id: "6",
+      title: "Review PR from Sarah",
+      date: new Date().toISOString().split("T")[0],
+      startTime: "14:00",
+      endTime: "15:00",
+      completed: false,
+      category: "inbox",
+      reminder: true,
+    },
+    {
+      id: "7",
+      title: "Dentist appointment",
+      date: "2025-04-18",
+      startTime: "11:30",
+      endTime: "12:30",
+      completed: false,
+      category: "custom",
+      reminder: true,
+    },
+    {
+      id: "8",
+      title: "Submit research proposal",
+      date: "2025-04-20",
+      startTime: "17:00",
+      endTime: "18:00",
+      completed: false,
+      category: "inbox",
+      reminder: true,
+    },
+    {
+      id: "9",
+      title: "Weekly meal prep",
+      date: "2025-04-21",
+      startTime: "18:30",
+      endTime: "20:00",
+      completed: false,
+      category: "custom",
+      reminder: false,
+    },
+  ]);
 
-   // Add a new task
-   const handleAddTask = (taskData: {
+  const toggleTaskCompletion = (taskId: string) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      )
+    );
+  };
+
+  // Add a new task
+  const handleAddTask = (taskData: {
     title: string;
     date: string;
     time: string;
     reminder: boolean;
-    category: 'inbox' | 'custom';
+    category: "inbox" | "custom";
   }) => {
     const newTask: Task = {
-      id: tasks.length.toString()+1,
+      id: tasks.length.toString() + 1,
       title: taskData.title,
       date: taskData.date,
-      time: taskData.time,
+      startTime: taskData.time,
+      endTime: taskData.time,
       completed: false,
       reminder: taskData.reminder,
-      category: taskData.category
+      category: taskData.category,
     };
-    
-    setTasks(prevTasks => [...prevTasks, newTask]);
+
+    setTasks((prevTasks) => [...prevTasks, newTask]);
   };
 
   // Sample habits data
@@ -179,24 +244,26 @@ const CalendarScreen: React.FC = () => {
 
   // Generate marked dates for the calendar
   const getMarkedDates = () => {
+    const markedDates: {
+      [date: string]: {
+        marked?: boolean;
+        dotColor?: string;
+        selected?: boolean;
+        selectedColor?: string;
+      };
+    } = {};
     const today = new Date().toISOString().split("T")[0];
 
-    // Sample dates with dots
-    const markedDates: any = {
-      [today]: {
-        selected: true,
-        selectedColor: "#5D87FF",
-      },
-      "2025-04-01": { marked: true, dotColor: "#5D87FF" },
-      "2025-04-08": { marked: true, dotColor: "#5D87FF" },
-      "2025-04-10": { marked: true, dotColor: "#5D87FF" },
-      "2025-04-15": { marked: true, dotColor: "#5D87FF" },
-      "2025-04-22": { marked: true, dotColor: "#5D87FF" },
-      "2025-04-29": { marked: true, dotColor: "#5D87FF" },
-    };
+    tasks.forEach((task) => {
+      markedDates[task.date] = {
+        ...markedDates[today],
+        marked: true,
+        dotColor: "#5D87FF",
+      };
+    });
 
     // Add selected date styling
-    if (selectedDate !== today) {
+    if (selectedDate) {
       markedDates[selectedDate] = {
         ...markedDates[selectedDate],
         selected: true,
@@ -238,48 +305,58 @@ const CalendarScreen: React.FC = () => {
       {/* Header */}
       <Header title={currentMonth} />
 
-      {/* Calendar */}
-      {/* <View style={styles.calendarWrapper}> */}
-      <CalendarList
-        horizontal = {true}
-        pagingEnabled = {true}
-        calendarHeight={200}
-        onDayPress={handleDateSelect}
-        onVisibleMonthsChange={([month]) => handleMonthChange(month)}
-        markedDates={getMarkedDates()}
-        theme={{
-          calendarBackground: "#f9f9f9",
-          textSectionTitleColor: "#b6c1cd",
-          selectedDayBackgroundColor: "#5D87FF",
-          selectedDayTextColor: "#ffffff",
-          todayTextColor: "#5D87FF",
-          dayTextColor: "#2d4150",
-          textDisabledColor: "#d9e1e8",
-          dotColor: "#5D87FF",
-          selectedDotColor: "#ffffff",
-          arrowColor: "#5D87FF",
-          monthTextColor: "#2d4150",
-          indicatorColor: "#5D87FF",
-          textDayFontFamily: "System",
-          textMonthFontFamily: "System",
-          textDayHeaderFontFamily: "System",
-          textMonthFontWeight: "bold",
-          textDayFontSize: 17,
-          textMonthFontSize: 16,
-          textDayHeaderFontSize: 14,
-        }}
-        hideExtraDays={false}
-        firstDay={1}
-      />
-      {/* </View> */}
-      <ScrollView>
+      <View style={styles.calendarWrapper}>
+        <CalendarList
+          renderHeader={() => null}
+          horizontal={true}
+          pagingEnabled={true}
+          calendarHeight={200}
+          onDayPress={handleDateSelect}
+          onVisibleMonthsChange={([month]) => handleMonthChange(month)}
+          markedDates={getMarkedDates()}
+          showSixWeeks={true}
+          theme={{
+            calendarBackground: "#f9f9f9",
+            textSectionTitleColor: "#b6c1cd",
+            selectedDayBackgroundColor: "#5D87FF",
+            selectedDayTextColor: "#ffffff",
+            todayTextColor: "#5D87FF",
+            todayBackgroundColor: "#ffffff",
+            dayTextColor: "#2d4150",
+            textDayFontWeight: "bold",
+            textDisabledColor: "#d9e1e8",
+            dotColor: "#5D87FF",
+            selectedDotColor: "#ffffff",
+            arrowColor: "#5D87FF",
+            monthTextColor: "#2d4150",
+            indicatorColor: "#5D87FF",
+            textDayFontFamily: "System",
+            textMonthFontFamily: "System",
+            textDayHeaderFontFamily: "System",
+            textMonthFontWeight: "bold",
+            textDayFontSize: 16,
+            textMonthFontSize: 16,
+            textDayHeaderFontSize: 14,
+          }}
+          hideExtraDays={false}
+        />
+      </View>
+      <ScrollView style={{ flex: 1 }}>
         {/* Today's tasks section */}
         <View style={styles.tasksSection}>
-          <Text style={styles.sectionTitle}>TODAY</Text>
+          <Text style={styles.sectionTitle}>
+            {formatDateToShort(selectedDate)}
+          </Text>
           <View style={styles.tasksList}>
-            {tasks.map((task) => (
-              <TaskItem key={task.id} task={task} />
-            ))}
+            {tasks
+              .filter((task) => task.date === selectedDate)
+              .map((task) => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onToggleComplete={toggleTaskCompletion}
+                />
+              ))}
           </View>
         </View>
 
@@ -313,7 +390,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9f9f9",
   },
   calendarWrapper: {
-    flex: 1, 
+    height: 330,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -325,6 +402,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
+    position: "relative",
   },
   menuButton: {
     padding: 8,
@@ -332,6 +410,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "600",
+    position: "absolute", // Add this
+    left: 0, // Add this
+    right: 0, // Add this
+    textAlign: "center", // Add this
   },
   headerRightContainer: {
     flexDirection: "row",
