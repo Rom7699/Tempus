@@ -238,7 +238,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     }
   };
 
-  // Handle close
+  // Handle close.
   const handleClose = () => {
     setShowListSelector(false);
     onClose();
