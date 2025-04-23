@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+//import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import axios from "axios";
 import { AuthService } from "../services/AuthService";
 
@@ -69,6 +70,9 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     return date;
   };
 
+  // Temporary date states to hold changes until "Done" is pressed
+  const [tempDate, setTempDate] = useState<Date | null>(null);
+
   const [taskName, setTaskName] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState(initializeDate);
@@ -91,6 +95,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
   const [activeField, setActiveField] = useState<'startDate' | 'startTime' | 'endDate' | 'endTime'>('startDate');
 
+
   // Reset state when modal becomes visible or selectedDate changes
   useEffect(() => {
     if (visible) {
@@ -105,6 +110,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       setAttendees('');
       setPriority(2);
       setEnergyLevel(50);
+      setTempDate(null);
 
       // Only set selectedList if availableLists has items and selectedList is null
       if (availableLists.length > 0 && !selectedList) {
@@ -120,9 +126,10 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     }
   }, [availableLists.length]); // Only depend on the length
 
+
   // Formatting functions
   const formatDate = (date: Date): string => {
-    const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+    const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
     return date.toLocaleDateString('en-US', options);
   };
 
@@ -135,42 +142,91 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const openPicker = (field: 'startDate' | 'startTime' | 'endDate' | 'endTime', mode: 'date' | 'time') => {
     setActiveField(field);
     setPickerMode(mode);
+
+    // Initialize tempDate with the current active date
+    if (field.startsWith('start')) {
+      setTempDate(new Date(startDate));
+    } else {
+      setTempDate(new Date(endDate));
+    }
+
     setShowPicker(true);
   };
 
+  // Handle picker change - only stores to tempDate
   const handlePickerChange = (event: any, selectedDateTime?: Date) => {
-    // Hide picker for Android
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android' && event.type === 'dismissed') {
       setShowPicker(false);
+      setTempDate(null);
+      return;
     }
 
-    if (event.type === 'dismissed' || !selectedDateTime) return;
+    if (event.type === 'set' && Platform.OS === 'android') {
+      // For Android, validate time selection
+      if (activeField === 'endTime' && isSameDay(startDate, endDate) && selectedDateTime) {
+        // If end time is earlier than start time on the same day
+        if (selectedDateTime.getTime() <= startDate.getTime()) {
+          // Set to start time + 1 hour
+          const validTime = new Date(startDate.getTime());
+          validTime.setHours(validTime.getHours() + 1);
+          applyDateTimeChange(validTime);
+        } else {
+          applyDateTimeChange(selectedDateTime);
+        }
+      } else {
+        applyDateTimeChange(selectedDateTime);
+      }
+      setShowPicker(false);
+      return;
+    }
+
+    if (selectedDateTime) {
+      setTempDate(selectedDateTime);
+    }
+  };
+  // checks if two dates are the same day
+  const isSameDay = (date1: Date, date2: Date): boolean => {
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate()
+    );
+  };
+
+  // Apply the date changes when user confirms by pressing Done
+  const applyDateTimeChange = (selectedDateTime?: Date) => {
+    if (!selectedDateTime && !tempDate) return;
+
+    const dateToApply = selectedDateTime || tempDate;
+    if (!dateToApply) return;
 
     if (activeField === 'startDate' || activeField === 'startTime') {
       const newDate = new Date(startDate.getTime());
 
       if (pickerMode === 'date') {
-        newDate.setFullYear(selectedDateTime.getFullYear());
-        newDate.setMonth(selectedDateTime.getMonth());
-        newDate.setDate(selectedDateTime.getDate());
+        newDate.setFullYear(dateToApply.getFullYear());
+        newDate.setMonth(dateToApply.getMonth());
+        newDate.setDate(dateToApply.getDate());
 
-        // Update end date to keep the same date
-        const updatedEndDate = new Date(endDate.getTime());
-        updatedEndDate.setFullYear(newDate.getFullYear());
-        updatedEndDate.setMonth(newDate.getMonth());
-        updatedEndDate.setDate(newDate.getDate());
-        setEndDate(updatedEndDate);
+        // Update end date to keep the same date if it is earlier than the new start date
+        if (endDate < newDate) {
+          const updatedEndDate = new Date(endDate.getTime());
+          updatedEndDate.setFullYear(newDate.getFullYear());
+          updatedEndDate.setMonth(newDate.getMonth());
+          updatedEndDate.setDate(newDate.getDate());
+          setEndDate(updatedEndDate);
+        }
+
       } else {
-        newDate.setHours(selectedDateTime.getHours());
-        newDate.setMinutes(selectedDateTime.getMinutes());
+        newDate.setHours(dateToApply.getHours());
+        newDate.setMinutes(dateToApply.getMinutes());
 
         // Update end time to be at least one hour after the start time
         const updatedEndDate = new Date(endDate.getTime());
-        // If end time is now less than or equal to start time, set it to start time + 1 hour
-        if (updatedEndDate.getTime() <= newDate.getTime()) {
-          updatedEndDate.setHours(newDate.getHours() + 1);
-          updatedEndDate.setMinutes(newDate.getMinutes());
-          setEndDate(updatedEndDate);
+        // If end time is now less than start time, set it to start time
+        if (updatedEndDate.getTime() < newDate.getTime()) {
+          const newEndDate = new Date(newDate.getTime());
+          setEndDate(newEndDate);
         }
       }
 
@@ -180,9 +236,9 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       const newDate = new Date(endDate.getTime());
 
       if (pickerMode === 'date') {
-        newDate.setFullYear(selectedDateTime.getFullYear());
-        newDate.setMonth(selectedDateTime.getMonth());
-        newDate.setDate(selectedDateTime.getDate());
+        newDate.setFullYear(dateToApply.getFullYear());
+        newDate.setMonth(dateToApply.getMonth());
+        newDate.setDate(dateToApply.getDate());
 
         // Ensure end date is not before start date
         const startDateTime = new Date(startDate);
@@ -201,25 +257,38 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           newDate.setDate(startDate.getDate());
         }
       } else {
-        newDate.setHours(selectedDateTime.getHours());
-        newDate.setMinutes(selectedDateTime.getMinutes());
+        newDate.setHours(dateToApply.getHours());
+        newDate.setMinutes(dateToApply.getMinutes());
 
         // Ensure end time is not before start time if dates are the same
-        const startDateTime = new Date(startDate);
-        const endDateTime = new Date(newDate);
+        const sameDay = isSameDay(startDate, newDate);
 
-        if (startDateTime.getFullYear() === endDateTime.getFullYear() &&
-          startDateTime.getMonth() === endDateTime.getMonth() &&
-          startDateTime.getDate() === endDateTime.getDate() &&
-          endDateTime.getTime() <= startDateTime.getTime()) {
-          // If same day and end time is earlier or equal to start time, set it to start time + 1 hour
-          newDate.setHours(startDate.getHours() + 1);
-          newDate.setMinutes(startDate.getMinutes());
+        if (sameDay && newDate.getTime() <= startDate.getTime()) {
+          // If end time is now before or equal to start time on the same day, 
+          const adjustedDate = new Date(startDate.getTime());
+          adjustedDate.setHours(startDate.getHours());
+          setEndDate(adjustedDate);
+          return;
         }
       }
 
       setEndDate(newDate);
     }
+
+    // Clear temporary date
+    setTempDate(null);
+  };
+
+  // Handle confirming date selection
+  const handlePickerDone = () => {
+    applyDateTimeChange();
+    setShowPicker(false);
+  };
+
+  // Handle canceling date selection
+  const handlePickerCancel = () => {
+    setTempDate(null);
+    setShowPicker(false);
   };
 
   // Handle creating new list
@@ -247,19 +316,19 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   // Handle save
   const handleSave = async () => {
     if (taskName.trim() === '') return;
-  
+
     try {
       const token = await AuthService.getJWTToken();
       console.log("JWT Token:", token);
-  
+
       if (!token) return;
-  
+
       const formatTime = (date: Date) => {
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
         return `${hours}:${minutes}`;
       };
-  
+
       const taskData = {
         taskName: taskName.trim(),
         taskDescription: description.trim(),
@@ -274,7 +343,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         taskEnergyLevel: energyLevel,
         taskListId: selectedList || null
       };
-  
+
       const response = await axios.post(
         "https://0olevx3qah.execute-api.us-east-1.amazonaws.com/task",
         taskData,
@@ -285,16 +354,16 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           },
         }
       );
-  
+
       console.log("Task saved:", response.data);
       handleClose(); // Close modal and clear form
     } catch (error: any) {
-      
+
       console.error("Error creating task:", error?.response?.data || error.message);
     }
   };
-  
-  
+
+
 
   // Render list item
   const renderListItem = ({ item }: { item: List }) => (
@@ -489,7 +558,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             onPress={() => setShowAdvancedOptions(!showAdvancedOptions)}
           >
             <Ionicons
-              name={showAdvancedOptions ? "chevron-up-circle" : "chevron-down-circle"}
+              name={showAdvancedOptions ? "chevron-up" : "chevron-down"}
               size={22}
               color="#5D87FF"
             />
@@ -760,34 +829,39 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 {Platform.OS === 'ios' ? (
                   <View style={styles.pickerContainer}>
                     <View style={styles.pickerHeader}>
-                      <TouchableOpacity onPress={() => setShowPicker(false)}>
+                      <TouchableOpacity onPress={handlePickerCancel}>
                         <Text style={styles.pickerCancelButton}>Cancel</Text>
                       </TouchableOpacity>
                       <Text style={styles.pickerTitle}>
                         {pickerMode === 'date' ? 'Select Date' : 'Select Time'}
                       </Text>
-                      <TouchableOpacity onPress={() => setShowPicker(false)}>
+                      <TouchableOpacity onPress={handlePickerDone}>
                         <Text style={styles.pickerDoneButton}>Done</Text>
                       </TouchableOpacity>
                     </View>
                     <DateTimePicker
                       testID="picker"
-                      value={activeField.startsWith('start') ? startDate : endDate}
+                      value={tempDate || (activeField.startsWith('start') ? startDate : endDate)}
                       mode={pickerMode}
                       display="spinner"
                       onChange={handlePickerChange}
                       style={styles.iosPicker}
                       is24Hour={true}
+
+                      minimumDate={activeField === 'endDate' ? startDate : undefined}
+
                     />
                   </View>
                 ) : (
                   <DateTimePicker
                     testID="picker"
-                    value={activeField.startsWith('start') ? startDate : endDate}
+                    value={tempDate || (activeField.startsWith('start') ? startDate : endDate)}
                     mode={pickerMode}
                     display="default"
                     onChange={handlePickerChange}
                     is24Hour={true}
+                    // Add these props for Android too
+                    minimumDate={activeField === 'endDate' ? startDate : undefined}
                   />
                 )}
               </>
