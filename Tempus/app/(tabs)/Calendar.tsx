@@ -378,7 +378,7 @@ const CalendarScreen: React.FC = () => {
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         onSave={handleAddTask}
-        selectedDate={selectedDate}
+        selectedDate={new Date(selectedDate)}
       />
     </SafeAreaView>
   );
