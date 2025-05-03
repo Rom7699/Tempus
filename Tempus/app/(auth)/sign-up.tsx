@@ -1,24 +1,24 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
   ActivityIndicator,
   Alert,
   ScrollView,
   KeyboardAvoidingView,
-  Platform
-} from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { Link, useRouter } from 'expo-router';
+  Platform,
+} from "react-native";
+import { useAuth } from "../../context/AuthContext";
+import { Link, useRouter } from "expo-router";
 
 export default function SignUpScreen() {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { signUp } = useAuth();
   const router = useRouter();
@@ -26,12 +26,12 @@ export default function SignUpScreen() {
   const handleSignUp = async () => {
     // Validate inputs
     if (!fullName || !email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert("Error", "Passwords do not match");
       return;
     }
 
@@ -40,11 +40,14 @@ export default function SignUpScreen() {
       await signUp(fullName, email, password);
       // Navigate to confirmation screen with email
       router.push({
-        pathname: '/(auth)/confirm-registration',
-        params: { email }
+        pathname: "/(auth)/confirm-registration",
+        params: { email },
       });
     } catch (error: any) {
-      Alert.alert('Sign Up Failed', error.message || 'An unknown error occurred');
+      Alert.alert(
+        "Sign Up Failed",
+        error.message || "An unknown error occurred"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -53,12 +56,12 @@ export default function SignUpScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.container}>
           <Text style={styles.title}>Create Account</Text>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Full Name</Text>
             <TextInput
@@ -68,7 +71,7 @@ export default function SignUpScreen() {
               placeholder="Enter your full name"
             />
           </View>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email</Text>
             <TextInput
@@ -80,7 +83,7 @@ export default function SignUpScreen() {
               autoCapitalize="none"
             />
           </View>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Password</Text>
             <TextInput
@@ -91,7 +94,7 @@ export default function SignUpScreen() {
               secureTextEntry
             />
           </View>
-          
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Confirm Password</Text>
             <TextInput
@@ -102,9 +105,9 @@ export default function SignUpScreen() {
               secureTextEntry
             />
           </View>
-          
-          <TouchableOpacity 
-            style={styles.button} 
+
+          <TouchableOpacity
+            style={styles.button}
             onPress={handleSignUp}
             disabled={isLoading}
           >
@@ -114,12 +117,15 @@ export default function SignUpScreen() {
               <Text style={styles.buttonText}>Sign Up</Text>
             )}
           </TouchableOpacity>
-          
-          <Link href="/(auth)/sign-in" asChild>
-            <TouchableOpacity style={styles.linkContainer}>
-              <Text style={styles.linkText}>Already have an account? Sign In</Text>
-            </TouchableOpacity>
-          </Link>
+
+          <TouchableOpacity
+            style={styles.linkContainer}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.linkText}>
+              Already have an account? Sign In
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -133,14 +139,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
-    backgroundColor: '#fff',
+    justifyContent: "center",
+    backgroundColor: "#fff",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 30,
-    textAlign: 'center',
+    textAlign: "center",
   },
   inputContainer: {
     marginBottom: 20,
@@ -151,29 +157,29 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#007bff',
+    backgroundColor: "#007bff",
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   linkContainer: {
     marginTop: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   linkText: {
-    color: '#007bff',
+    color: "#007bff",
     fontSize: 16,
   },
 });

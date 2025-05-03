@@ -10,8 +10,7 @@ import {
   RefreshControl
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { router } from 'expo-router';
-
+import { Calendar} from "react-native-calendars";
 export default function HomeScreen() {
   const { user, signOut } = useAuth();
   const [userAttributes, setUserAttributes] = useState<{ [key: string]: string }>({});
@@ -86,7 +85,7 @@ export default function HomeScreen() {
             You are now signed in to your account
           </Text>
         </View>
-
+                
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Your Profile</Text>
           <View style={styles.profileItem}>

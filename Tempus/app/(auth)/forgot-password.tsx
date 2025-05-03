@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,19 +8,19 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Platform
-} from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { Link, router } from 'expo-router';
+  Platform,
+} from "react-native";
+import { useAuth } from "../../context/AuthContext";
+import { Link, router } from "expo-router";
 
 export default function ForgotPasswordScreen() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { forgotPassword } = useAuth();
 
   const handleForgotPassword = async () => {
     if (!email) {
-      Alert.alert('Error', 'Please enter your email address');
+      Alert.alert("Error", "Please enter your email address");
       return;
     }
 
@@ -28,20 +28,21 @@ export default function ForgotPasswordScreen() {
     try {
       await forgotPassword(email);
       Alert.alert(
-        'Reset Code Sent',
-        'A verification code has been sent to your email address',
+        "Reset Code Sent",
+        "A verification code has been sent to your email address",
         [
           {
-            text: 'OK',
-            onPress: () => router.push({
-              pathname: '/(auth)/reset-password',
-              params: { email }
-            })
-          }
+            text: "OK",
+            onPress: () =>
+              router.push({
+                pathname: "/(auth)/reset-password",
+                params: { email },
+              }),
+          },
         ]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to request password reset');
+      Alert.alert("Error", error.message || "Failed to request password reset");
     } finally {
       setIsLoading(false);
     }
@@ -50,12 +51,13 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={styles.container}>
         <Text style={styles.title}>Forgot Password</Text>
         <Text style={styles.subtitle}>
-          Enter your email address and we'll send you a code to reset your password
+          Enter your email address and we'll send you a code to reset your
+          password
         </Text>
 
         <View style={styles.inputContainer}>
@@ -82,11 +84,12 @@ export default function ForgotPasswordScreen() {
           )}
         </TouchableOpacity>
 
-        <Link href="/(auth)/sign-in" asChild>
-          <TouchableOpacity style={styles.linkContainer}>
+          <TouchableOpacity
+            style={styles.linkContainer}
+            onPress={() => router.back()}
+          >
             <Text style={styles.linkText}>Back to Sign In</Text>
           </TouchableOpacity>
-        </Link>
       </View>
     </KeyboardAvoidingView>
   );
@@ -96,20 +99,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
-    backgroundColor: '#fff',
+    justifyContent: "center",
+    backgroundColor: "#fff",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
     marginBottom: 30,
-    textAlign: 'center',
+    textAlign: "center",
   },
   inputContainer: {
     marginBottom: 20,
@@ -120,29 +123,29 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#007bff',
+    backgroundColor: "#007bff",
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   linkContainer: {
     marginTop: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   linkText: {
-    color: '#007bff',
+    color: "#007bff",
     fontSize: 16,
   },
 });
