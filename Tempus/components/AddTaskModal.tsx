@@ -1,4 +1,370 @@
 
+// import React, { useState, useEffect } from 'react';
+// import {
+//   Modal,
+//   View,
+//   Text,
+//   StyleSheet,
+//   TouchableOpacity,
+//   TouchableWithoutFeedback,
+//   Keyboard,
+//   FlatList,
+//   TextInput,
+// } from 'react-native';
+// import { Ionicons } from '@expo/vector-icons';
+
+// interface List {
+//   id: number;
+//   name: string;
+//   color: string;
+//   icon: string;
+// }
+
+// interface AddTaskModalProps {
+//   visible: boolean;
+//   onClose: () => void;
+//   onSave: (task: any) => void;
+//   availableLists?: List[];
+//   onCreateNewList?: (listName: string) => Promise<List>;
+// }
+
+// const AddTaskModal: React.FC<AddTaskModalProps> = ({
+//   visible,
+//   onClose,
+//   onSave,
+//   availableLists,
+//   onCreateNewList = async () => ({ id: '1', name: 'Default', color: '#5D87FF' }),
+// }) => {
+//   const [selectedList, setSelectedList] = useState<List | null>(null);
+//   const [showListSelector, setShowListSelector] = useState(false);
+//   const [newListName, setNewListName] = useState('');
+//   const [showNewListInput, setShowNewListInput] = useState(false);
+
+//   // Reset state when modal becomes visible
+//   useEffect(() => {
+//     if (visible) {
+//       // Only set selectedList if availableLists has items and selectedList is null
+//       if (availableLists.length > 0 && !selectedList) {
+//         setSelectedList(availableLists[0]);
+//       }
+//     }
+//   }, [visible]);
+
+//   // Set initial selected list when availableLists changes and we don't have one selected
+//   useEffect(() => {
+//     if (availableLists.length > 0 && !selectedList) {
+//       setSelectedList(availableLists[0]);
+//     }
+//   }, [availableLists.length]);
+
+//   // Handle creating new list
+//   const handleCreateNewList = async () => {
+//     if (newListName.trim() === '') return;
+
+//     try {
+//       const newList = await onCreateNewList(newListName.trim());
+//       setSelectedList(newList);
+//       setShowNewListInput(false);
+//       setNewListName('');
+//       setShowListSelector(false);
+//     } catch (error) {
+//       console.error("Failed to create new list:", error);
+//     }
+//   };
+
+//   // Handle close
+//   const handleClose = () => {
+//     setShowListSelector(false);
+//     onClose();
+//   };
+
+//   // Handle save
+//   const handleSave = () => {
+//     const taskData = {
+//       taskListId: selectedList?.id || null
+//     };
+
+//     onSave(taskData);
+//     handleClose();
+//   };
+
+//   // Render list item
+//   const renderListItem = ({ item }: { item: List }) => (
+//     <TouchableOpacity
+//       style={[
+//         styles.listItem,
+//         selectedList?.id === item.id && styles.selectedListItem
+//       ]}
+//       onPress={() => {
+//         setSelectedList(item);
+//         setShowListSelector(false);
+//       }}
+//     >
+//       <View style={[styles.listColorIndicator, { backgroundColor: item.color }]} />
+//       <Ionicons name={item.icon} size={18} color={item.color} style={styles.listIcon} />
+//       <Text style={styles.listItemText}>{item.name}</Text>
+//       {selectedList?.id === item.id && (
+//         <Ionicons name="checkmark" size={20} color="#5D87FF" />
+//       )}
+//     </TouchableOpacity>
+//   );
+
+//   return (
+//     <Modal
+//       animationType="slide"
+//       transparent={true}
+//       visible={visible}
+//       onRequestClose={handleClose}
+//     >
+//       <TouchableWithoutFeedback onPress={() => {
+//         Keyboard.dismiss();
+//         setShowListSelector(false);
+//       }}>
+//         <View style={styles.centeredView}>
+//           <View style={styles.modalView}>
+//             {/* Header */}
+//             <View style={styles.modalHeader}>
+//               <TouchableOpacity onPress={handleClose}>
+//                 <Text style={styles.cancelButton}>Cancel</Text>
+//               </TouchableOpacity>
+//               <Text style={styles.modalTitle}>Add Task</Text>
+//               <TouchableOpacity onPress={handleSave}>
+//                 <Text style={styles.saveButton}>Save</Text>
+//               </TouchableOpacity>
+//             </View>
+
+//             {/* Content */}
+//             <View style={styles.modalContent}>
+//               {/* List Selection */}
+//               <TouchableOpacity
+//                 style={styles.optionRow}
+//                 onPress={() => setShowListSelector(!showListSelector)}
+//               >
+//                 <Ionicons name="list" size={22} color="#5D87FF" />
+//                 <View style={styles.optionTextContainer}>
+//                   <Text style={styles.optionLabel}>List</Text>
+//                   {selectedList ? (
+//                     <View style={styles.selectedListContainer}>
+//                       <View style={[styles.listColorIndicator, { backgroundColor: selectedList.color }]} />
+//                       <Ionicons name={selectedList.icon} size={18} color={selectedList.color} style={styles.listIcon} />
+//                       <Text style={styles.optionValue}>{selectedList.name}</Text>
+//                     </View>
+//                   ) : (
+//                     <Text style={styles.optionValue}>Select a list</Text>
+//                   )}
+//                 </View>
+//                 <Ionicons
+//                   name={showListSelector ? "chevron-down" : "chevron-forward"}
+//                   size={20}
+//                   color="#CCCCCC"
+//                 />
+//               </TouchableOpacity>
+
+//               {/* List Selector */}
+//               {showListSelector && (
+//                 <View style={styles.listSelectorContainer}>
+//                   <FlatList
+//                     data={availableLists}
+//                     renderItem={renderListItem}
+//                     keyExtractor={(item) => item.id}
+//                     style={styles.listSelector}
+//                     scrollEnabled={true}
+//                     nestedScrollEnabled={true}
+//                     ListFooterComponent={() => (
+//                       !showNewListInput ? (
+//                         <TouchableOpacity
+//                           style={styles.createNewListButton}
+//                           onPress={() => setShowNewListInput(true)}
+//                         >
+//                           <Ionicons name="add-circle-outline" size={22} color="#5D87FF" />
+//                           <Text style={styles.createNewListText}>Create New List</Text>
+//                         </TouchableOpacity>
+//                       ) : (
+//                         <View style={styles.newListInputContainer}>
+//                           <TextInput
+//                             style={styles.newListInput}
+//                             placeholder="Enter list name"
+//                             value={newListName}
+//                             onChangeText={setNewListName}
+//                             autoFocus
+//                           />
+//                           <View style={styles.newListButtonsContainer}>
+//                             <TouchableOpacity
+//                               style={styles.newListButton}
+//                               onPress={() => setShowNewListInput(false)}
+//                             >
+//                               <Text style={styles.cancelNewListButton}>Cancel</Text>
+//                             </TouchableOpacity>
+//                             <TouchableOpacity
+//                               style={styles.newListButton}
+//                               onPress={handleCreateNewList}
+//                               disabled={newListName.trim() === ''}
+//                             >
+//                               <Text style={[
+//                                 styles.createNewListText,
+//                                 newListName.trim() === '' && styles.disabledButton
+//                               ]}>
+//                                 Create
+//                               </Text>
+//                             </TouchableOpacity>
+//                           </View>
+//                         </View>
+//                       )
+//                     )}
+//                   />
+//                 </View>
+//               )}
+//             </View>
+//           </View>
+//         </View>
+//       </TouchableWithoutFeedback>
+//     </Modal>
+//   );
+// };
+
+// const styles = StyleSheet.create({
+//   centeredView: {
+//     flex: 1,
+//     justifyContent: 'flex-end',
+//     backgroundColor: 'rgba(0, 0, 0, 0.5)'
+//   },
+//   modalView: {
+//     backgroundColor: 'white',
+//     borderTopLeftRadius: 20,
+//     borderTopRightRadius: 20,
+//     height: '50%', // Reduced height since we have fewer options
+//     shadowColor: '#000',
+//     shadowOffset: { width: 0, height: -2 },
+//     shadowOpacity: 0.25,
+//     shadowRadius: 4,
+//     elevation: 5
+//   },
+//   modalHeader: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     padding: 16,
+//     borderBottomWidth: 1,
+//     borderBottomColor: '#f0f0f0',
+//   },
+//   modalTitle: {
+//     fontSize: 17,
+//     fontWeight: '600'
+//   },
+//   cancelButton: {
+//     fontSize: 16,
+//     color: '#999'
+//   },
+//   saveButton: {
+//     fontSize: 16,
+//     color: '#5D87FF',
+//     fontWeight: '600'
+//   },
+//   disabledButton: {
+//     color: '#CCCCCC'
+//   },
+//   modalContent: {
+//     flex: 1,
+//     padding: 16
+//   },
+//   optionRow: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     paddingVertical: 16,
+//     borderBottomWidth: 1,
+//     borderBottomColor: '#f0f0f0',
+//   },
+//   optionTextContainer: {
+//     flex: 1,
+//     marginLeft: 16
+//   },
+//   optionLabel: {
+//     fontSize: 14,
+//     color: '#666',
+//     marginBottom: 2
+//   },
+//   optionValue: {
+//     fontSize: 16,
+//     color: '#333'
+//   },
+//   selectedListContainer: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//   },
+//   listSelectorContainer: {
+//     marginTop: 8,
+//     marginBottom: 16,
+//     backgroundColor: '#f9f9f9',
+//     borderRadius: 8,
+//     padding: 8,
+//   },
+//   listSelector: {
+//     maxHeight: 200,
+//   },
+//   listItem: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     paddingVertical: 12,
+//     paddingHorizontal: 8,
+//     borderRadius: 8,
+//   },
+//   selectedListItem: {
+//     backgroundColor: '#f0f7ff',
+//   },
+//   listColorIndicator: {
+//     width: 16,
+//     height: 16,
+//     borderRadius: 4,
+//     marginRight: 12,
+//   },
+//   listItemText: {
+//     flex: 1,
+//     fontSize: 16,
+//     color: '#333',
+//   },
+//   createNewListButton: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     paddingVertical: 12,
+//     paddingHorizontal: 8,
+//   },
+//   createNewListText: {
+//     marginLeft: 12,
+//     fontSize: 16,
+//     color: '#5D87FF',
+//   },
+//   newListInputContainer: {
+//     padding: 8,
+//     backgroundColor: 'white',
+//     borderRadius: 8,
+//     marginTop: 8,
+//     borderWidth: 1,
+//     borderColor: '#e0e0e0',
+//   },
+//   newListInput: {
+//     fontSize: 16,
+//     padding: 8,
+//     backgroundColor: '#f5f5f5',
+//     borderRadius: 4,
+//   },
+//   newListButtonsContainer: {
+//     flexDirection: 'row',
+//     justifyContent: 'flex-end',
+//     marginTop: 8,
+//   },
+//   newListButton: {
+//     paddingVertical: 8,
+//     paddingHorizontal: 16,
+//   },
+//   cancelNewListButton: {
+//     fontSize: 16,
+//     color: '#999',
+//   }
+// });
+
+// export default AddTaskModal;
+
+
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
@@ -16,15 +382,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-//import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import axios from "axios";
-import { AuthService } from "../services/AuthService";
-
+import { addTask } from '@/context/ApiContext';
+import { BaseTask } from '@/types/tasks';
 
 interface List {
-  id: string;
+  id: number;
   name: string;
-  color: string;
+  color: string|undefined; // Optional color property
+  icon: string|undefined; // Optional icon property
 }
 
 interface AddTaskModalProps {
@@ -39,7 +404,7 @@ interface AddTaskModalProps {
 const AddTaskModal: React.FC<AddTaskModalProps> = ({
   visible,
   onClose,
-  //onSave,
+  onSave,
   availableLists = [],
   onCreateNewList = async () => ({ id: '1', name: 'Default', color: '#5D87FF' }),
   selectedDate, // Receive the selectedDate prop
@@ -112,6 +477,9 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       setEnergyLevel(50);
       setTempDate(null);
 
+      if(availableLists === undefined) {
+        availableLists = [];
+      }
       // Only set selectedList if availableLists has items and selectedList is null
       if (availableLists.length > 0 && !selectedList) {
         setSelectedList(availableLists[0]);
@@ -318,44 +686,27 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     if (taskName.trim() === '') return;
 
     try {
-      const token = await AuthService.getJWTToken();
-      console.log("JWT Token:", token);
 
-      if (!token) return;
-
-      const formatTime = (date: Date) => {
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
+      const taskData: BaseTask = {
+        task_name: taskName.trim(),
+        task_description: description.trim(),
+        task_start_date: startDate.toISOString().split('T')[0], // "YYYY-MM-DD"
+        task_start_time: formatTime(startDate), // "HH:mm"
+        task_end_date: endDate.toISOString().split('T')[0],
+        task_end_time: formatTime(endDate),
+        task_reminder: reminderEnabled,
+        task_location: location.trim(),
+        task_attendees: attendees.trim() === "" ? [] : attendees.split(',').map(a => a.trim()),
+        task_priority: priority,
+        task_energy_level: energyLevel, 
+        task_list_id: selectedList?.id || undefined, // Use undefined if no list is selected
       };
+      
 
-      const taskData = {
-        taskName: taskName.trim(),
-        taskDescription: description.trim(),
-        taskStartDate: startDate.toISOString().split('T')[0],   // "YYYY-MM-DD"
-        taskStartTime: formatTime(startDate),                   // "HH:mm"
-        taskEndDate: endDate.toISOString().split('T')[0],
-        taskEndTime: formatTime(endDate),
-        taskReminder: reminderEnabled,
-        taskLocation: location.trim(),
-        taskAttendees: attendees.trim() === "" ? [] : attendees.split(',').map(a => a.trim()),
-        taskPriority: priority,
-        taskEnergyLevel: energyLevel,
-        taskListId: selectedList || null
-      };
-
-      const response = await axios.post(
-        "https://0olevx3qah.execute-api.us-east-1.amazonaws.com/task",
-        taskData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await addTask(taskData);
 
       console.log("Task saved:", response.data);
+
       handleClose(); // Close modal and clear form
     } catch (error: any) {
 
@@ -428,33 +779,75 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         )
       },
       // List Selection
+      // {
+      //   key: 'list',
+      //   render: () => (
+      //     <TouchableOpacity
+      //       style={styles.optionRow}
+      //       onPress={() => setShowListSelector(!showListSelector)}
+      //     >
+      //       <Ionicons name="list" size={22} color="#5D87FF" />
+      //       <View style={styles.optionTextContainer}>
+      //         <Text style={styles.optionLabel}>List</Text>
+      //         {selectedList ? (
+      //           <View style={styles.selectedListContainer}>
+      //             <View style={[styles.listColorIndicator, { backgroundColor: selectedList.color }]} />
+      //             <Text style={styles.optionValue}>{selectedList.name}</Text>
+      //           </View>
+      //         ) : (
+      //           <Text style={styles.optionValue}>Select a list</Text>
+      //         )}
+      //       </View>
+      //       <Ionicons
+      //         name={showListSelector ? "chevron-down" : "chevron-forward"}
+      //         size={20}
+      //         color="#CCCCCC"
+      //       />
+      //     </TouchableOpacity>
+          
+      //   )
+        
+      // }
       {
         key: 'list',
-        render: () => (
-          <TouchableOpacity
-            style={styles.optionRow}
-            onPress={() => setShowListSelector(!showListSelector)}
-          >
-            <Ionicons name="list" size={22} color="#5D87FF" />
-            <View style={styles.optionTextContainer}>
-              <Text style={styles.optionLabel}>List</Text>
-              {selectedList ? (
-                <View style={styles.selectedListContainer}>
-                  <View style={[styles.listColorIndicator, { backgroundColor: selectedList.color }]} />
-                  <Text style={styles.optionValue}>{selectedList.name}</Text>
+        render: () => {
+          return (
+            <>
+              <TouchableOpacity
+                style={styles.optionRow}
+                onPress={() => setShowListSelector(!showListSelector)}
+              >
+                <Ionicons name="list" size={22} color="#5D87FF" />
+                <View style={styles.optionTextContainer}>
+                  <Text style={styles.optionLabel}>List</Text>
+                  {selectedList ? (
+                    <View style={styles.selectedListContainer}>
+                      <View style={[styles.listColorIndicator, { backgroundColor: selectedList.color }]} />
+                      <Text style={styles.optionValue}>{selectedList.name}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.optionValue}>Select a list</Text>
+                  )}
                 </View>
-              ) : (
-                <Text style={styles.optionValue}>Select a list</Text>
-              )}
-            </View>
-            <Ionicons
-              name={showListSelector ? "chevron-down" : "chevron-forward"}
-              size={20}
-              color="#CCCCCC"
-            />
-          </TouchableOpacity>
-        )
+                <Ionicons
+                  name={showListSelector ? "chevron-down" : "chevron-forward"}
+                  size={20}
+                  color="#CCCCCC"
+                />
+              </TouchableOpacity>
+      
+              {/* ✅ This will now show the list below the selector */}
+              {listsSection.map(section => (
+                <View key={section.key}>
+                  {section.render()}
+                </View>
+              ))}
+            </>
+          );
+        }
       },
+
+      
       // Start Date Selection
       {
         key: 'startDate',
@@ -720,7 +1113,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             <FlatList
               data={availableLists}
               renderItem={renderListItem}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item.id?.toString?.() ?? Math.random().toString()}
               style={styles.listSelector}
               scrollEnabled={true}
               nestedScrollEnabled={true}

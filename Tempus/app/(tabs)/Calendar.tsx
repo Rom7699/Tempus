@@ -14,8 +14,13 @@ import { CheckBox } from "react-native-elements";
 import FloatingActionButton from "../../components/AddTaskButton";
 import AddTaskModal from "../../components/AddTaskModal"; // Define types for our tasks
 import TaskItem from "../../components/TaskItem";
+import { AuthService } from "../../services/AuthService";
+import axios from "axios";
+import { getLists, getTasksByMonth, getTasksByYear} from '@/context/ApiContext';
+import { BaseList, List } from '@/types/lists';
+import { BaseTask, Task } from '@/types/tasks';
 
-interface Task {
+interface Task3 {
   id: string;
   title: string;
   date: string;
@@ -26,6 +31,48 @@ interface Task {
   reminder?: boolean;
 }
 
+interface TaskDB {
+  // Core identifiers
+  user_id: string;
+  task_id: string;
+  
+  // Task content
+  task_name: string;
+  task_description?: string;
+  task_list_id?: number;
+  
+  // Timing information
+  task_start_date?: string; // ISO date format 'YYYY-MM-DD'
+  task_start_time?: string; // Format 'HH:MM:SS'
+  task_end_date?: string; // ISO date format 'YYYY-MM-DD'
+  task_end_time?: string; // Format 'HH:MM:SS'
+  
+  // Additional properties
+  task_reminder?: boolean;
+  task_location?: string;
+  task_attendees?: string[];
+  task_priority?: number;
+  task_energy_level?: number;
+  
+  // Metadata
+  task_creation_date: string; // Timestamp with timezone
+}
+
+interface ListItemFromAPI {
+  id: number;
+  name: string;
+  color: string;
+  icon: string;
+  createdDate: string; // or Date if it's parsed
+}
+
+// interface List {
+//   id: number;
+//   name: string;
+//   color: string|undefined;
+//   icon: string|undefined;
+// }
+
 // Define types for habits
 interface Habit {
   id: string;
@@ -33,6 +80,7 @@ interface Habit {
   icon: React.ReactNode;
   streak?: number;
 }
+
 
 // Component for the header with month title and controls
 const Header: React.FC<{ title: string }> = ({ title }) => {
@@ -88,6 +136,47 @@ function formatDateToShort(dateString: string): string {
   return `${day} ${month}`;
 }
 
+export const fetchList = async () => {
+    try {
+      const lists = await getLists();
+
+      console.log("lists fetched1:", lists.data);
+
+      return(lists.data);
+      
+    } catch (error: any) {
+
+      console.error("Error fetcing lists:", error?.response?.data || error.message);
+    }
+  };
+
+  export const fetchTasksByMonth = async (month:number, year: number) => {
+    try {
+      
+      // Make sure to pass the month and year as part of the URL path
+      const tasksByMonth = await getTasksByMonth(month, year);
+  
+      console.log("Tasks fetched:", tasksByMonth.data);
+  
+      // Ensure the structure matches your TaskDB interface
+      return(tasksByMonth.data);
+  
+    } catch (error: any) {
+      console.error("Error fetching tasks:", error?.response?.data || error.message);
+    }
+  };
+  
+
+  const testFetchTasksByMonth = async () => {
+    try {
+      // Test with a specific month (e.g., 4 for April) and year (e.g., 2025)
+      const tasks = await fetchTasksByMonth(4, 2025);
+    } catch (error) {
+      console.error("Error during testing:", error);
+    }
+  };
+  
+
 // Main Calendar Screen component
 const CalendarScreen: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(
@@ -95,9 +184,21 @@ const CalendarScreen: React.FC = () => {
   );
   const [currentMonth, setCurrentMonth] = useState<string>("April");
   const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [availableLists, setAvailableLists] = useState<List[]>([]);
 
+  useEffect(() => {
+    const loadLists = async () => {
+      const lists = await fetchList();
+      if (!lists) return;
+      setAvailableLists(lists);
+    };
+    testFetchTasksByMonth();
+  
+    loadLists();
+  }, []);
+  
   // Sample tasks data
-  const [tasks, setTasks] = useState<Task[]>([
+  const [tasks, setTasks] = useState<Task3[]>([
     {
       id: "1",
       title: "Workout at the gym",
@@ -206,7 +307,7 @@ const CalendarScreen: React.FC = () => {
     reminder: boolean;
     category: "inbox" | "custom";
   }) => {
-    const newTask: Task = {
+    const newTask: Task3 = {
       id: tasks.length.toString() + 1,
       title: taskData.title,
       date: taskData.date,
@@ -217,7 +318,7 @@ const CalendarScreen: React.FC = () => {
       category: taskData.category,
     };
 
-    setTasks((prevTasks) => [...prevTasks, newTask]);
+    //setTasks((prevTasks) => [...prevTasks, newTask]);
   };
 
   // Sample habits data
@@ -370,15 +471,17 @@ const CalendarScreen: React.FC = () => {
           </View>
         </View>
       </ScrollView>
-
+      
       {/* FAB Button */}
       <FloatingActionButton onPress={() => setModalVisible(true)} />
+        
       {/* Add Task Modal */}
       <AddTaskModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         onSave={handleAddTask}
         selectedDate={selectedDate}
+        availableLists={availableLists} // Pass the available lists to the modal
       />
     </SafeAreaView>
   );
