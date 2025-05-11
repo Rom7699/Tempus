@@ -10,15 +10,18 @@ import {
 } from "react-native";
 import { CalendarList, DateData } from "react-native-calendars";
 import { Ionicons } from "@expo/vector-icons";
-import { CheckBox } from "react-native-elements";
 import FloatingActionButton from "../../components/AddTaskButton";
 import AddTaskModal from "../../components/AddTaskModal"; // Define types for our tasks
 import TaskItem from "../../components/TaskItem";
 import { AuthService } from "../../services/AuthService";
-import axios from "axios";
-import { getLists, getTasksByMonth, getTasksByYear} from '@/context/ApiContext';
-import { BaseList, List } from '@/types/lists';
-import { BaseTask, Task } from '@/types/tasks';
+
+import {
+  getLists,
+  getTasksByMonth,
+  getTasksByYear,
+} from "@/context/ApiContext";
+import { BaseList, List } from "@/types/lists";
+import { BaseTask, Task } from "@/types/tasks";
 
 interface Task3 {
   id: string;
@@ -35,43 +38,28 @@ interface TaskDB {
   // Core identifiers
   user_id: string;
   task_id: string;
-  
+
   // Task content
   task_name: string;
   task_description?: string;
   task_list_id?: number;
-  
+
   // Timing information
   task_start_date?: string; // ISO date format 'YYYY-MM-DD'
   task_start_time?: string; // Format 'HH:MM:SS'
   task_end_date?: string; // ISO date format 'YYYY-MM-DD'
   task_end_time?: string; // Format 'HH:MM:SS'
-  
+
   // Additional properties
   task_reminder?: boolean;
   task_location?: string;
   task_attendees?: string[];
   task_priority?: number;
   task_energy_level?: number;
-  
+
   // Metadata
   task_creation_date: string; // Timestamp with timezone
 }
-
-interface ListItemFromAPI {
-  id: number;
-  name: string;
-  color: string;
-  icon: string;
-  createdDate: string; // or Date if it's parsed
-}
-
-// interface List {
-//   id: number;
-//   name: string;
-//   color: string|undefined;
-//   icon: string|undefined;
-// }
 
 // Define types for habits
 interface Habit {
@@ -80,7 +68,6 @@ interface Habit {
   icon: React.ReactNode;
   streak?: number;
 }
-
 
 // Component for the header with month title and controls
 const Header: React.FC<{ title: string }> = ({ title }) => {
@@ -136,46 +123,31 @@ function formatDateToShort(dateString: string): string {
   return `${day} ${month}`;
 }
 
-export const fetchList = async () => {
-    try {
-      const lists = await getLists();
+export const fetchTasksByMonth = async (month: number, year: number) => {
+  try {
+    // Make sure to pass the month and year as part of the URL path
+    const tasksByMonth = await getTasksByMonth(month, year);
 
-      console.log("lists fetched1:", lists.data);
+    console.log("Tasks fetched:", tasksByMonth.data);
 
-      return(lists.data);
-      
-    } catch (error: any) {
+    // Ensure the structure matches your TaskDB interface
+    return tasksByMonth.data;
+  } catch (error: any) {
+    console.error(
+      "Error fetching tasks:",
+      error?.response?.data || error.message
+    );
+  }
+};
 
-      console.error("Error fetcing lists:", error?.response?.data || error.message);
-    }
-  };
-
-  export const fetchTasksByMonth = async (month:number, year: number) => {
-    try {
-      
-      // Make sure to pass the month and year as part of the URL path
-      const tasksByMonth = await getTasksByMonth(month, year);
-  
-      console.log("Tasks fetched:", tasksByMonth.data);
-  
-      // Ensure the structure matches your TaskDB interface
-      return(tasksByMonth.data);
-  
-    } catch (error: any) {
-      console.error("Error fetching tasks:", error?.response?.data || error.message);
-    }
-  };
-  
-
-  const testFetchTasksByMonth = async () => {
-    try {
-      // Test with a specific month (e.g., 4 for April) and year (e.g., 2025)
-      const tasks = await fetchTasksByMonth(4, 2025);
-    } catch (error) {
-      console.error("Error during testing:", error);
-    }
-  };
-  
+const testFetchTasksByMonth = async () => {
+  try {
+    // Test with a specific month (e.g., 4 for April) and year (e.g., 2025)
+    const tasks = await fetchTasksByMonth(5, 2025);
+  } catch (error) {
+    console.error("Error during testing:", error);
+  }
+};
 
 // Main Calendar Screen component
 const CalendarScreen: React.FC = () => {
@@ -185,111 +157,59 @@ const CalendarScreen: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState<string>("April");
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [availableLists, setAvailableLists] = useState<List[]>([]);
+  // Track current view's year and month
+  const [currentYear, setCurrentYear] = useState<number>(
+    new Date().getFullYear()
+  );
+  const [currentMonthNumber, setCurrentMonthNumber] = useState<number>(
+    new Date().getMonth() + 1
+  );
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    const loadLists = async () => {
-      const lists = await fetchList();
-      if (!lists) return;
-      setAvailableLists(lists);
+    // Load both lists and tasks when component mounts or month changes
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        // Load lists
+        const listsResponse = await getLists();
+        if (listsResponse?.data) {
+          setAvailableLists(listsResponse.data);
+        }
+
+        // Load tasks using fetchTasksByMonth
+        const tasksData = await fetchTasksByMonth(
+          currentMonthNumber,
+          currentYear
+        );
+        if (tasksData) {
+          // Transform API data to match Task3 interface
+          const formattedTasks = tasksData.map((taskData: any) => ({
+            id: taskData.task_id,
+            title: taskData.task_name,
+            date:
+              taskData.task_start_date ||
+              new Date().toISOString().split("T")[0],
+            startTime: taskData.task_start_time?.substring(0, 5) || "09:00",
+            endTime: taskData.task_end_time?.substring(0, 5) || "10:00",
+            completed: false, // Set default value since it's not in the API response
+            category: "inbox" as "inbox" | "custom", // Explicitly type as "inbox" | "custom"
+            reminder: taskData.task_reminder || false,
+          }));
+
+          setTasks(formattedTasks);
+        }
+      } catch (error) {
+        console.error("Error loading data:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    testFetchTasksByMonth();
-  
-    loadLists();
-  }, []);
-  
+
+    loadData();
+  }, [currentMonthNumber, currentYear]); // Re-run when month or year changes
   // Sample tasks data
-  const [tasks, setTasks] = useState<Task3[]>([
-    {
-      id: "1",
-      title: "Workout at the gym",
-      date: new Date().toISOString().split("T")[0],
-      startTime: "10:00",
-      endTime: "11:00",
-      completed: false,
-      category: "inbox",
-      reminder: true,
-    },
-    {
-      id: "2",
-      title: "2 hours of leetcode",
-      date: "2025-04-14",
-      startTime: "12:00",
-      endTime: "14:00",
-      completed: false,
-      category: "inbox",
-      reminder: true,
-    },
-    {
-      id: "3",
-      title: "Finish watching statistics lecture",
-      date: "2025-04-16",
-      startTime: "15:30",
-      endTime: "16:30",
-      completed: false,
-      category: "inbox",
-      reminder: true,
-    },
-    {
-      id: "4",
-      title: "Coffee with Prof. Johnson",
-      date: "2025-04-15",
-      startTime: "09:30",
-      endTime: "10:15",
-      completed: false,
-      category: "custom",
-      reminder: true,
-    },
-    {
-      id: "5",
-      title: "Weekly team standup",
-      date: "2025-04-14",
-      startTime: "09:00",
-      endTime: "09:30",
-      completed: true,
-      category: "inbox",
-      reminder: false,
-    },
-    {
-      id: "6",
-      title: "Review PR from Sarah",
-      date: new Date().toISOString().split("T")[0],
-      startTime: "14:00",
-      endTime: "15:00",
-      completed: false,
-      category: "inbox",
-      reminder: true,
-    },
-    {
-      id: "7",
-      title: "Dentist appointment",
-      date: "2025-04-18",
-      startTime: "11:30",
-      endTime: "12:30",
-      completed: false,
-      category: "custom",
-      reminder: true,
-    },
-    {
-      id: "8",
-      title: "Submit research proposal",
-      date: "2025-04-20",
-      startTime: "17:00",
-      endTime: "18:00",
-      completed: false,
-      category: "inbox",
-      reminder: true,
-    },
-    {
-      id: "9",
-      title: "Weekly meal prep",
-      date: "2025-04-21",
-      startTime: "18:30",
-      endTime: "20:00",
-      completed: false,
-      category: "custom",
-      reminder: false,
-    },
-  ]);
+  const [tasks, setTasks] = useState<Task3[]>([]);
 
   const toggleTaskCompletion = (taskId: string) => {
     setTasks((prevTasks) =>
@@ -343,35 +263,31 @@ const CalendarScreen: React.FC = () => {
     },
   ];
 
-  // Generate marked dates for the calendar
   const getMarkedDates = () => {
-    const markedDates: {
-      [date: string]: {
-        marked?: boolean;
-        dotColor?: string;
-        selected?: boolean;
-        selectedColor?: string;
-      };
-    } = {};
-    const today = new Date().toISOString().split("T")[0];
-
+    console.log("Tasks count:", tasks.length);
+    const markedDates: {[date: string]: any} = {};
+  
     tasks.forEach((task) => {
-      markedDates[task.date] = {
-        ...markedDates[today],
+      // Format the date key properly - extract just YYYY-MM-DD part
+      const dateKey = task.date.split('T')[0];
+      
+      markedDates[dateKey] = {
+        ...markedDates[dateKey],
         marked: true,
         dotColor: "#5D87FF",
       };
     });
-
-    // Add selected date styling
+  
+    // Also format the selected date if needed
     if (selectedDate) {
-      markedDates[selectedDate] = {
-        ...markedDates[selectedDate],
+      const formattedSelectedDate = selectedDate.split('T')[0];
+      markedDates[formattedSelectedDate] = {
+        ...markedDates[formattedSelectedDate],
         selected: true,
         selectedColor: "#5D87FF",
       };
     }
-
+    
     return markedDates;
   };
 
@@ -397,6 +313,9 @@ const CalendarScreen: React.FC = () => {
       "December",
     ];
     setCurrentMonth(monthNames[month.month - 1]);
+
+    setCurrentMonthNumber(month.month);
+    setCurrentYear(month.year);
   };
 
   return (
@@ -450,7 +369,12 @@ const CalendarScreen: React.FC = () => {
           </Text>
           <View style={styles.tasksList}>
             {tasks
-              .filter((task) => task.date === selectedDate)
+              .filter((task) => {
+                // Normalize both dates to YYYY-MM-DD format for proper comparison
+                const taskDate = task.date.split('T')[0];
+                const normalizedSelectedDate = selectedDate.split('T')[0];
+                return taskDate === normalizedSelectedDate;
+              })
               .map((task) => (
                 <TaskItem
                   key={task.id}
@@ -471,16 +395,15 @@ const CalendarScreen: React.FC = () => {
           </View>
         </View>
       </ScrollView>
-      
+
       {/* FAB Button */}
       <FloatingActionButton onPress={() => setModalVisible(true)} />
-        
+
       {/* Add Task Modal */}
       <AddTaskModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        onSave={handleAddTask}
-        selectedDate={selectedDate}
+        selectedDate={selectedDate ? new Date(selectedDate) : undefined}
         availableLists={availableLists} // Pass the available lists to the modal
       />
     </SafeAreaView>
