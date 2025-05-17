@@ -26,11 +26,11 @@ const getAuthHeaders = async (): Promise<{ 'Content-Type': string; 'Authorizatio
 // Function to create a task
 // example ussage: const response = await addTask(taskData);
 // where taskData is an object containing the task details.
-// the returned data is an object containing the message and the created task, data.data is the created task, data.message is the success message.
-  export const addTask = async (taskData: BaseTask): Promise<{ message: string; data: Task }> => {
+// the returned data is an object containing the message and the created task, data.task is the created task, data.message is the success message.
+  export const addTask = async (taskData: BaseTask): Promise<{ message: string; task: Task }> => {
     const headers = await getAuthHeaders();
     try {
-        const { data } = await axios.post<{ message: string; data: Task }>(`${apiBase}/task`, taskData, { headers });
+        const  { data }  = await axios.post<{ message: string; task: Task }>(`${apiBase}/task`, taskData, { headers });
         return data;
       } catch (error: any) {
         console.error('Failed to add task:', error.response?.data || error.message);
@@ -40,10 +40,10 @@ const getAuthHeaders = async (): Promise<{ 'Content-Type': string; 'Authorizatio
 
 // Function to delete a task
 // example ussage: const response = await deleteTask("task_id_123");
-export const deleteTask = async (taskId: string): Promise<{ message: string; data: null }>=> {
+export const deleteTask = async (taskId: string): Promise<{ message: string; task: null }>=> {
     const headers = await getAuthHeaders();
     try {
-        const { data } = await axios.delete<{ message: string; data: null }>(
+        const { data } = await axios.delete<{ message: string; task: null }>(
           `${apiBase}/task/${taskId}`,
           { headers }
         );
@@ -59,10 +59,10 @@ export const deleteTask = async (taskId: string): Promise<{ message: string; dat
 // Function to update a task
 // example ussage: const response = await updateTask("task_id_123", { task_name: "Updated Task Name", task_description: "Updated description" });   
 // Note: The taskId is the ID of the task you want to update, and updatedData is an object containing the fields you want to update.
-export const updateTask = async (updatedData: UpdateTaskInput): Promise<{ message: string; data: Task }> => {
+export const updateTask = async (updatedData: UpdateTaskInput): Promise<{ message: string; task: Task }> => {
     const headers = await getAuthHeaders();
     try {
-      const { data } = await axios.patch<{ message: string; data: Task }>(
+      const { data } = await axios.patch<{ message: string; task: Task }>(
         `${apiBase}/task/${updatedData.task_id}`,
         updatedData,
         { headers }
@@ -78,10 +78,10 @@ export const updateTask = async (updatedData: UpdateTaskInput): Promise<{ messag
 
 // Get single task by ID
 // example ussage: const task = await getTaskById("task_id_123");
-export const getTaskById = async (taskId: string): Promise<{ message: string; data: Task }> => {
+export const getTaskById = async (taskId: string): Promise<{ message: string; task: Task }> => {
     const headers = await getAuthHeaders();
     try {
-      const { data } = await axios.get<{ message: string; data: Task }>(
+      const { data } = await axios.get<{ message: string; task: Task }>(
         `${apiBase}/task/${taskId}`,
         { headers }
       );
@@ -96,10 +96,10 @@ export const getTaskById = async (taskId: string): Promise<{ message: string; da
 
 // Get tasks by specific day (YYYY-MM-DD)
 // example ussage: const tasksToday = await getTasksByDay("2025-05-04");
-export const getTasksByDay = async (date: string): Promise<{ message: string; data: Task[] }> => {
+export const getTasksByDay = async (date: string): Promise<{ message: string; tasksArr: Task[] }> => {
     const headers = await getAuthHeaders();
     try {
-      const { data } = await axios.get<{ message: string; data: Task[] }>(
+      const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
         `${apiBase}/tasks/day/${date}`,
         { headers }
       );
@@ -121,10 +121,10 @@ export const getTasksByDay = async (date: string): Promise<{ message: string; da
 export const getTasksByMonth = async (
     month: number,
     year: number
-  ): Promise<{ message: string; data: Task[] }> => {
+  ): Promise<{ message: string; tasksArr: Task[] }> => {
     const headers = await getAuthHeaders();
     try {
-      const { data } = await axios.get<{ message: string; data: Task[] }>(
+      const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
         `${apiBase}/tasks/month/${month}/${year}`,
         { headers }
       );
@@ -140,10 +140,10 @@ export const getTasksByMonth = async (
 // example ussage: const tasksInYear = await getTasksByYear(2025);
 export const getTasksByYear = async (
     year: number
-  ): Promise<{ message: string; data: Task[] }> => {
+  ): Promise<{ message: string; tasksArr: Task[] }> => {
     const headers = await getAuthHeaders();
     try {
-      const { data } = await axios.get<{ message: string; data: Task[] }>(
+      const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
         `${apiBase}/tasks/year/${year}`,
         { headers }
       );
@@ -158,10 +158,10 @@ export const getTasksByYear = async (
 
 // Add a new list
 // example ussage:const response = await addList({ name: "Work", color: "#FF0000", icon: "work" });
-export const addList = async (listData: BaseList): Promise<{ message: string; data: List }> => {
+export const addList = async (listData: BaseList): Promise<{ message: string; list: List }> => {
     const headers = await getAuthHeaders();
     try {
-      const { data } = await axios.post<{ message: string; data: List }>(
+      const { data } = await axios.post<{ message: string; list: List }>(
         `${apiBase}/list`,
         listData,
         { headers }
@@ -177,10 +177,10 @@ export const addList = async (listData: BaseList): Promise<{ message: string; da
 
 // Get all user's lists
 // example ussage: const lists = await getLists();
-export const getLists = async (): Promise<{ message: string; data: List[] }> => {
+export const getLists = async (): Promise<{ message: string; listsArr: List[] }> => {
     const headers = await getAuthHeaders();
     try {
-      const { data } = await axios.get<{ message: string; data: List[] }>(
+      const { data } = await axios.get<{ message: string; listsArr: List[] }>(
         `${apiBase}/lists`,
         { headers }
       );
@@ -196,10 +196,10 @@ export const getLists = async (): Promise<{ message: string; data: List[] }> => 
 
   // Get tasks by list ID
 // example ussage: const tasks = await getTasksByListId(1);
-  export const getTasksByListId = async (listId: number): Promise<{ message: string; data: Task[] }> => {
+  export const getTasksByListId = async (listId: number): Promise<{ message: string; tasksArr: Task[] }> => {
     const headers = await getAuthHeaders();
     try {
-      const { data } = await axios.get<{ message: string; data: Task[] }>(
+      const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
         `${apiBase}/tasks/list/${listId}`,
         { headers }
       );
