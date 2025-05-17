@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import FloatingActionButton from "../../components/AddTaskButton";
 import AddTaskModal from "../../components/AddTaskModal"; // Define types for our tasks
 import TaskItem from "../../components/TaskItem";
+import { addTask } from '@/context/ApiContext';
 import { AuthService } from "../../services/AuthService";
 
 import {
@@ -128,10 +129,10 @@ export const fetchTasksByMonth = async (month: number, year: number) => {
     // Make sure to pass the month and year as part of the URL path
     const tasksByMonth = await getTasksByMonth(month, year);
 
-    console.log("Tasks fetched:", tasksByMonth.data);
+    console.log("Tasks fetched:", tasksByMonth);
 
     // Ensure the structure matches your TaskDB interface
-    return tasksByMonth.data;
+    return tasksByMonth;
   } catch (error: any) {
     console.error(
       "Error fetching tasks:",
@@ -173,7 +174,7 @@ const CalendarScreen: React.FC = () => {
       try {
         // Load lists
         const listsResponse = await getLists();
-        if (listsResponse?.data) {
+        if (listsResponse.data) {
           setAvailableLists(listsResponse.data);
         }
 
@@ -184,7 +185,7 @@ const CalendarScreen: React.FC = () => {
         );
         if (tasksData) {
           // Transform API data to match Task3 interface
-          const formattedTasks = tasksData.map((taskData: any) => ({
+          const formattedTasks = tasksData.data.map((taskData: any) => ({
             id: taskData.task_id,
             title: taskData.task_name,
             date:
@@ -220,25 +221,20 @@ const CalendarScreen: React.FC = () => {
   };
 
   // Add a new task
-  const handleAddTask = (taskData: {
-    title: string;
-    date: string;
-    time: string;
-    reminder: boolean;
-    category: "inbox" | "custom";
-  }) => {
-    const newTask: Task3 = {
-      id: tasks.length.toString() + 1,
-      title: taskData.title,
-      date: taskData.date,
-      startTime: taskData.time,
-      endTime: taskData.time,
-      completed: false,
-      reminder: taskData.reminder,
-      category: taskData.category,
-    };
+  const handleAddTask = async (newTask: BaseTask) => {
+    try {
+      const data = await addTask(newTask);
+      console.log("Task added successfully", data.data);
+      console.log("message:", data.message);
 
-    //setTasks((prevTasks) => [...prevTasks, newTask]);
+  
+      // Refresh task list (if needed)
+      //setTasks([...tasks, data.data]);
+  
+      setModalVisible(false); // Close modal
+    } catch (error) {
+      console.error("Error saving task:", error);
+    }
   };
 
   // Sample habits data
@@ -403,6 +399,7 @@ const CalendarScreen: React.FC = () => {
       <AddTaskModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
+        onSave={handleAddTask}
         selectedDate={selectedDate ? new Date(selectedDate) : undefined}
         availableLists={availableLists} // Pass the available lists to the modal
       />
