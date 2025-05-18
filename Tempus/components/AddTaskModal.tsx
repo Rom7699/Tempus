@@ -15,39 +15,49 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-//import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import axios from "axios";
-import { AuthService } from "../services/AuthService";
+import { BaseTask, Task, UpdateTaskInput } from '@/types/tasks';
+import { List } from '@/types/lists';
 
-
-interface List {
-  id: string;
-  name: string;
-  color: string;
-}
 
 interface AddTaskModalProps {
   visible: boolean;
   onClose: () => void;
   onSave: (task: any) => void;
   availableLists?: List[];
+  parentList?: List | null;
   onCreateNewList?: (listName: string) => Promise<List>;
   selectedDate?: Date; // Added selectedDate prop
+  initialTask?: Task | null; // Added initialTask prop for editing
 }
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({
   visible,
   onClose,
-  //onSave,
+  onSave,
   availableLists = [],
-  onCreateNewList = async () => ({ id: '1', name: 'Default', color: '#5D87FF' }),
+  parentList = null,
+  onCreateNewList = async () => ({ list_id: '1', list_name: 'Default', list_color: '#5D87FF' }),
   selectedDate, // Receive the selectedDate prop
+  initialTask = null,
 }) => {
   // Initialize with selectedDate but keep current time
   const initializeDate = () => {
     const now = new Date(); // Current date and time
 
-    if (selectedDate) {
+    if (initialTask?.task_start_date) {
+      const date = new Date(initialTask.task_start_date);
+
+      // override time if task_start_time is present
+      if (initialTask.task_start_time) {
+        const [hours, minutes] = initialTask.task_start_time.split(':').map(Number);
+        date.setHours(hours || 0);
+        date.setMinutes(minutes || 0);
+        date.setSeconds(0);
+      }
+
+      return date;
+    }
+    else if (selectedDate) {
       // Create a date from selectedDate
       const baseDate = new Date(selectedDate);
       // Set the time components from current time
@@ -63,10 +73,25 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   // Initialize end date with selectedDate but one hour later from current time
   const initializeEndDate = () => {
-    const date = initializeDate(); // Get the start date with current time
-    // Set end time to one hour later
-    date.setHours(date.getHours() + 1);
-    return date;
+    if (initialTask?.task_end_date) {
+      const date = new Date(initialTask.task_end_date);
+
+      // override time if task_start_time is present
+      if (initialTask.task_end_time) {
+        const [hours, minutes] = initialTask.task_end_time.split(':').map(Number);
+        date.setHours(hours || 0);
+        date.setMinutes(minutes || 0);
+        date.setSeconds(0);
+      }
+
+      return date;
+    }
+    else {
+      const date = initializeDate(); // Get the start date with current time
+      // Set end time to one hour later
+      date.setHours(date.getHours() + 1);
+      return date;
+    }
   };
 
   // Temporary date states to hold changes until "Done" is pressed
@@ -77,7 +102,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [startDate, setStartDate] = useState(initializeDate);
   const [endDate, setEndDate] = useState<Date>(initializeEndDate);
   const [reminderEnabled, setReminderEnabled] = useState(false);
-  const [selectedList, setSelectedList] = useState<List | null>(null);
+  const [selectedList, setSelectedList] = useState<List | null>(parentList || null);
   const [showListSelector, setShowListSelector] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [showNewListInput, setShowNewListInput] = useState(false);
@@ -94,29 +119,65 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
   const [activeField, setActiveField] = useState<'startDate' | 'startTime' | 'endDate' | 'endTime'>('startDate');
 
-
   // Reset state when modal becomes visible or selectedDate changes
   useEffect(() => {
     if (visible) {
-      // Reset the dates when the modal is shown
-      setStartDate(initializeDate());
-      setEndDate(initializeEndDate());
-      setTaskName('');
-      setDescription('');
-      setReminderEnabled(false);
-      setShowAdvancedOptions(false);
-      setLocation('');
-      setAttendees('');
-      setPriority(2);
-      setEnergyLevel(50);
-      setTempDate(null);
+      if (initialTask) {
+        // Populate form with initialTask data when editing
+        setTaskName(initialTask.task_name || '');
+        setDescription(initialTask.task_description || '');
 
-      // Only set selectedList if availableLists has items and selectedList is null
-      if (availableLists.length > 0 && !selectedList) {
-        setSelectedList(availableLists[0]);
+        // Start and end dates are set by initializeDate and initializeEndDate
+        setStartDate(initializeDate());
+        setEndDate(initializeEndDate());
+
+        // Other form fields
+        setReminderEnabled(initialTask.task_reminder || false);
+        setLocation(initialTask.task_location || '');
+
+        // Handle attendees (array or string)
+        const attendeesValue = Array.isArray(initialTask.task_attendees)
+          ? initialTask.task_attendees.join(', ')
+          : typeof initialTask.task_attendees === 'string'
+            ? initialTask.task_attendees
+            : '';
+        setAttendees(attendeesValue);
+
+        // Task properties
+        setPriority(initialTask.task_priority !== undefined ? initialTask.task_priority : 2);
+        setEnergyLevel(initialTask.task_energy_level !== undefined ? initialTask.task_energy_level : 50);
+        setShowAdvancedOptions(false);
+
+        // Find and set the selected list
+        if (parentList) {
+          setSelectedList(parentList);
+        } else if (availableLists.length > 0) {
+          setSelectedList(availableLists[0]);
+        }
+      } else {
+        // Reset the dates when the modal is shown
+        setStartDate(initializeDate());
+        setEndDate(initializeEndDate());
+        setTaskName('');
+        setDescription('');
+        setReminderEnabled(false);
+        setShowAdvancedOptions(false);
+        setLocation('');
+        setAttendees('');
+        setPriority(2);
+        setEnergyLevel(50);
+        setTempDate(null);
+
+        if (availableLists === undefined) {
+          availableLists = [];
+        }
+        // Only set selectedList if availableLists has items and selectedList is null
+        if (availableLists.length > 0 && !selectedList) {
+          setSelectedList(availableLists[0]);
+        }
       }
     }
-  }, [visible, selectedDate]); // Added selectedDate to dependencies
+  }, [visible, selectedDate, initialTask, availableLists.length, parentList]);
 
   // Set initial selected list when availableLists changes and we don't have one selected
   useEffect(() => {
@@ -125,6 +186,13 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     }
   }, [availableLists.length]); // Only depend on the length
 
+  // update selectedList when parentList changes
+  useEffect(() => {
+    if (parentList) {
+      setSelectedList(parentList);
+    }
+
+  }, [parentList]);
 
   // Formatting functions
   const formatDate = (date: Date): string => {
@@ -312,54 +380,38 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     onClose();
   };
 
-  // Handle save
-  const handleSave = async () => {
+  const handleSave = () => {
     if (taskName.trim() === '') return;
 
-    try {
-      const token = await AuthService.getJWTToken();
-      console.log("JWT Token:", token);
+    const taskData: BaseTask = {
+      task_name: taskName.trim(),
+      task_description: description?.trim() ?? "",
+      task_start_date: startDate.toISOString().split('T')[0], // "YYYY-MM-DD"
+      task_start_time: formatTime(startDate), // "HH:mm"
+      task_end_date: endDate.toISOString().split('T')[0],
+      task_end_time: formatTime(endDate),
+      task_reminder: reminderEnabled,
+      task_location: location?.trim() ?? "",
+      task_attendees: attendees?.trim() === "" ? [] : attendees.split(',').map(a => a.trim()),
+      task_priority: priority,
+      task_energy_level: energyLevel,
+      task_list_id: selectedList?.list_id || 1, // Use 1 as default if no list is selected
+      is_ai_generated: false,
+      is_event: false, // Set to false for now, can be updated later
+      is_completed: null, // Set to null for now, can be updated later if is_event is true
 
-      if (!token) return;
+    };
 
-      const formatTime = (date: Date) => {
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
+    if (initialTask?.task_id) {
+      const updatedTask: UpdateTaskInput = {
+        ...taskData,
+        task_id: initialTask.task_id,
       };
-
-      const taskData = {
-        task_name: taskName.trim(),                        // Change from taskName
-        task_description: description.trim(),              // Change from taskDescription
-        task_start_date: startDate.toISOString().split('T')[0],  // Change from taskStartDate
-        task_start_time: formatTime(startDate),            // Change from taskStartTime
-        task_end_date: endDate.toISOString().split('T')[0],      // Change from taskEndDate
-        task_end_time: formatTime(endDate),                // Change from taskEndTime
-        task_reminder: reminderEnabled,                    // Change from taskReminder
-        task_location: location.trim(),                    // Change from taskLocation
-        task_attendees: attendees.trim() === "" ? [] : attendees.split(',').map(a => a.trim()),
-        task_priority: priority,                           // Change from taskPriority
-        task_energy_level: energyLevel,                    // Change from taskEnergyLevel
-        task_list_id: selectedList?.id || null             // Change from taskListId and use .id
-      };
-
-      const response = await axios.post(
-        "https://0olevx3qah.execute-api.us-east-1.amazonaws.com/task",
-        taskData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        }
-      );
-
-      console.log("Task saved:", response.data);
-      handleClose(); // Close modal and clear form
-    } catch (error: any) {
-
-      console.error("Error creating task:", error?.response?.data || error.message);
+      onSave(updatedTask); // Updating
+    } else {
+      onSave(taskData); // Creating
     }
+    //onClose();
   };
 
 
@@ -369,16 +421,16 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     <TouchableOpacity
       style={[
         styles.listItem,
-        selectedList?.id === item.id && styles.selectedListItem
+        selectedList?.list_id === item.list_id && styles.selectedListItem
       ]}
       onPress={() => {
         setSelectedList(item);
         setShowListSelector(false);
       }}
     >
-      <View style={[styles.listColorIndicator, { backgroundColor: item.color }]} />
-      <Text style={styles.listItemText}>{item.name}</Text>
-      {selectedList?.id === item.id && (
+      <View style={[styles.listColorIndicator, { backgroundColor: item.list_color }]} />
+      <Text style={styles.listItemText}>{item.list_name}</Text>
+      {selectedList?.list_id === item.list_id && (
         <Ionicons name="checkmark" size={20} color="#5D87FF" />
       )}
     </TouchableOpacity>
@@ -426,34 +478,46 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           </View>
         )
       },
-      // List Selection
+
       {
         key: 'list',
-        render: () => (
-          <TouchableOpacity
-            style={styles.optionRow}
-            onPress={() => setShowListSelector(!showListSelector)}
-          >
-            <Ionicons name="list" size={22} color="#5D87FF" />
-            <View style={styles.optionTextContainer}>
-              <Text style={styles.optionLabel}>List</Text>
-              {selectedList ? (
-                <View style={styles.selectedListContainer}>
-                  <View style={[styles.listColorIndicator, { backgroundColor: selectedList.color }]} />
-                  <Text style={styles.optionValue}>{selectedList.name}</Text>
+        render: () => {
+          return (
+            <>
+              <TouchableOpacity
+                style={styles.optionRow}
+                onPress={() => setShowListSelector(!showListSelector)}
+              >
+                <Ionicons name="list" size={22} color="#5D87FF" />
+                <View style={styles.optionTextContainer}>
+                  <Text style={styles.optionLabel}>List</Text>
+                  {selectedList ? (
+                    <View style={styles.selectedListContainer}>
+                      <View style={[styles.listColorIndicator, { backgroundColor: selectedList.list_color }]} />
+                      <Text style={styles.optionValue}>{selectedList.list_name}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.optionValue}>Select a list</Text>
+                  )}
                 </View>
-              ) : (
-                <Text style={styles.optionValue}>Select a list</Text>
-              )}
-            </View>
-            <Ionicons
-              name={showListSelector ? "chevron-down" : "chevron-forward"}
-              size={20}
-              color="#CCCCCC"
-            />
-          </TouchableOpacity>
-        )
+                <Ionicons
+                  name={showListSelector ? "chevron-down" : "chevron-forward"}
+                  size={20}
+                  color="#CCCCCC"
+                />
+              </TouchableOpacity>
+
+              {/* ✅ This will now show the list below the selector */}
+              {/* {listsSection.map(section => (
+                <View key={section.key}>
+                  {section.render()}
+                </View>
+              ))} */}
+            </>
+          );
+        }
       },
+
       // Start Date Selection
       {
         key: 'startDate',
@@ -719,7 +783,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             <FlatList
               data={availableLists}
               renderItem={renderListItem}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item) => item.list_id?.toString?.() ?? Math.random().toString()}
               style={styles.listSelector}
               scrollEnabled={true}
               nestedScrollEnabled={true}
@@ -801,7 +865,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               <TouchableOpacity onPress={handleClose}>
                 <Text style={styles.cancelButton}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Add Task</Text>
+              <Text style={styles.modalTitle}>{initialTask ? 'Edit Task' : 'Add Task'}</Text>
               <TouchableOpacity
                 onPress={handleSave}
                 disabled={taskName.trim() === ''}

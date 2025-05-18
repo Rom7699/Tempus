@@ -31,6 +31,7 @@ const getAuthHeaders = async (): Promise<{ 'Content-Type': string; 'Authorizatio
     const headers = await getAuthHeaders();
     try {
         const  { data }  = await axios.post<{ message: string; task: Task }>(`${apiBase}/task`, taskData, { headers });
+        console.log(data.message);
         return data;
       } catch (error: any) {
         console.error('Failed to add task:', error.response?.data || error.message);
@@ -191,8 +192,23 @@ export const getLists = async (): Promise<{ message: string; listsArr: List[] }>
       throw new Error(error.response?.data?.message || 'Failed to fetch lists');
     }
   };
-  
-  
+
+  // Get a specific list by ID
+// example usage: const list = await getListById(5);
+export const getListById = async (listId: number): Promise<{ message: string; list: List }> => {
+    const headers = await getAuthHeaders();
+    try {
+      const { data } = await axios.get<{ message: string; list: List }>(
+        `${apiBase}/list/${listId}`,
+        { headers }
+      );
+      console.log(`Fetched list ${listId}: ${data.message}`);
+      return data;
+    } catch (error: any) {
+      console.error(`Failed to fetch list ${listId}:`, error.response?.data || error.message);
+      throw new Error(error.response?.data?.message || `Failed to fetch list ${listId}`);
+    }
+  };  
 
   // Get tasks by list ID
 // example ussage: const tasks = await getTasksByListId(1);

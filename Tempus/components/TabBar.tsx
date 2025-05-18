@@ -5,23 +5,13 @@ import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Ionicons } from '@expo/vector-icons';
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-    const icon = { 
-        home: (props: any) => <Ionicons 
-            name='home-outline'
-            size={24} 
-            {...props}
-          />,
-        Calendar: (props: any) => <Ionicons 
-            name='calendar-outline'
-            size={24} 
-            {...props}
-          />,
-        profile: (props: any) => <Ionicons 
-            name='person-outline'
-            size={24} 
-            {...props}
-          />,
-      };
+    // Make sure these match your route names exactly
+const icon = { 
+    Home: (props: any) => <Ionicons name='home-outline' size={24} {...props} />,
+    Calendar: (props: any) => <Ionicons name='calendar-outline' size={24} {...props} />,
+    Profile: (props: any) => <Ionicons name='person-outline' size={24} {...props} />,
+    Lists: (props: any) => <Ionicons name='list-outline' size={24} {...props} />,
+};
   
     return (
     <View style={styles.tabBar}>
@@ -66,8 +56,9 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             onLongPress={onLongPress}
             style={styles.tabBarItem}
           >
-            {icon[route.name]({ color: isFocused ? "#5D87FF" : "#222" })}
-            <Text style ={{ color: isFocused ? "#5D87FF" : "#222" }}>
+           
+           {icon[route.name] && icon[route.name]({ color: isFocused ? "#5D87FF" : "#222" })}
+           <Text style={{ color: isFocused ? "#5D87FF" : "#222" }}>
               {typeof label === 'string' 
                 ? label 
                 : typeof label === 'function' 

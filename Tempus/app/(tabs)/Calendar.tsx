@@ -174,8 +174,8 @@ const CalendarScreen: React.FC = () => {
       try {
         // Load lists
         const listsResponse = await getLists();
-        if (listsResponse.data) {
-          setAvailableLists(listsResponse.data);
+        if (listsResponse.listsArr) {
+          setAvailableLists(listsResponse.listsArr);
         }
 
         // Load tasks using fetchTasksByMonth
@@ -185,7 +185,7 @@ const CalendarScreen: React.FC = () => {
         );
         if (tasksData) {
           // Transform API data to match Task3 interface
-          const formattedTasks = tasksData.data.map((taskData: any) => ({
+          const formattedTasks = tasksData.tasksArr.map((taskData: any) => ({
             id: taskData.task_id,
             title: taskData.task_name,
             date:
@@ -224,7 +224,7 @@ const CalendarScreen: React.FC = () => {
   const handleAddTask = async (newTask: BaseTask) => {
     try {
       const data = await addTask(newTask);
-      console.log("Task added successfully", data.data);
+      console.log("Task added successfully", data.task);
       console.log("message:", data.message);
 
   
