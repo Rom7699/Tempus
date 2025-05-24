@@ -1,6 +1,8 @@
 import { Stack } from "expo-router";
 import { AuthProvider } from "../context/AuthContext";
+import { ApiProvider } from "../context/ApiContext";
 import { useColorScheme } from "react-native";
+
 import { ThemeProvider } from "@react-navigation/native";
 import { lightTheme, darkTheme } from "../constants/Theme";
 
@@ -10,11 +12,13 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === "dark" ? darkTheme : lightTheme}>
       <AuthProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="debug" />
-        </Stack>
+        <ApiProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="debug" />
+          </Stack>
+        </ApiProvider>
       </AuthProvider>
     </ThemeProvider>
   );

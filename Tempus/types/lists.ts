@@ -1,10 +1,10 @@
 export interface BaseList {
-    id: number;
-    name: string;
-    color: string;
-    icon: string;
+  list_name: string;
+  list_color: string;
+  list_icon: string;
 }
 export interface List extends BaseList {
-    user_id?: string;
-    createdDate?: string; // or Date if it's parsed
+  list_id: number;
+  user_id?: string;
+  list_creation_date?: string; // or Date if it's parsed
 }

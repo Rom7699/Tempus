@@ -16,6 +16,11 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             size={24} 
             {...props}
           />,
+        Lists: (props: any) => <Ionicons 
+            name="list"
+            size={24} 
+            {...props}
+          />,
         profile: (props: any) => <Ionicons 
             name='person-outline'
             size={24} 

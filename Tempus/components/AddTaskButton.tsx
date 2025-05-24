@@ -1,14 +1,36 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface FloatingActionButtonProps {
   onPress: () => void;
+  customPosition?: {
+    bottom?: number;
+    right?: number;
+  };
 }
 
-const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onPress }) => {
+const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ 
+  onPress,
+  customPosition
+}) => {
+  // Get safe area insets to avoid notches and home indicators
+  const insets = useSafeAreaInsets();
+  const screenWidth = Dimensions.get('window').width;
+  
+  // Calculate default position to be consistent across screens
+  const defaultBottom = Platform.OS === 'ios' ? Math.max(20, insets.bottom) + 60 : 80;
+  const defaultRight = Math.min(24, screenWidth * 0.06); // 6% of screen width or 24px, whichever is smaller
+  
+  const buttonStyle = {
+    ...styles.fab,
+    right: customPosition?.right !== undefined ? customPosition.right : defaultRight,
+    bottom: customPosition?.bottom !== undefined ? customPosition.bottom : defaultBottom
+  };
+  
   return (
-    <TouchableOpacity style={styles.fab} onPress={onPress}>
+    <TouchableOpacity style={buttonStyle} onPress={onPress}>
       <Ionicons name="add" size={30} color="white" />
     </TouchableOpacity>
   );
@@ -21,8 +43,6 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: '#5D87FF',
-    right: 24,
-    bottom: 80,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
@@ -30,6 +50,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    zIndex: 1000, // Ensure it's above other elements
   },
 });
 

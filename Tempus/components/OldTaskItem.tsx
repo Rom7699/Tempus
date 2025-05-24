@@ -1,49 +1,32 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, StyleSheet, Animated } from "react-native";
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from "react-native";
 import { CheckBox } from "react-native-elements";
 import { Ionicons } from "@expo/vector-icons";
-
-interface Task {
-  id: string;
-  title: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  completed: boolean;
-  category: "inbox" | "custom";
-  reminder?: boolean;
-}
+import { useApi } from "@/context/ApiContext";
+import { Task, UpdateTaskInput } from "@/types/tasks";
 
 interface TaskItemProps {
-    task: Task;
-    onToggleComplete: (taskId: string) => void;
-  }
+  task: Task;
+  onToggleComplete: (taskId: string) => void;
+}
 
-// Format date function remains the same
-function formatDateToShort(dateString: string): string {
+function formatDateToShort(dateString: string | undefined): string {
+  if (!dateString) return "N/A";
+  
   const date = new Date(dateString);
   const day = date.getDate();
   const monthNames = [
-    "JAN",
-    "FEB",
-    "MAR",
-    "APR",
-    "MAY",
-    "JUN",
-    "JUL",
-    "AUG",
-    "SEP",
-    "OCT",
-    "NOV",
-    "DEC",
+    "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
   ];
   const month = monthNames[date.getMonth()];
   return `${day} ${month}`;
 }
 
-// Task item component
 const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete }) => {
-  const [checked, setChecked] = useState(task.completed);
+  const { updateTask } = useApi();
+  const [checked, setChecked] = useState(task.is_completed);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Animation values
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -51,11 +34,16 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete }) => {
   const strikeWidthAnim = useRef(new Animated.Value(0)).current;
 
   // Handle checkbox toggle with animation
-  const handleToggle = () => {
-    const newCheckedState = !checked;
-    setChecked(!checked);
-    onToggleComplete(task.id);
+  const handleToggle = async () => {
+    if (isUpdating) return; // Prevent multiple rapid toggles
 
+    const newCheckedState = !checked;
+    setChecked(newCheckedState);
+    
+    // Call the parent's onToggleComplete for immediate UI feedback
+    onToggleComplete(task.task_id);
+
+    // Play animations
     if (newCheckedState) {
       // Play completion animation
       Animated.sequence([
@@ -74,13 +62,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete }) => {
         Animated.parallel([
           Animated.timing(opacityAnim, {
             toValue: 0.6,
-            duration: 10000,
+            duration: 300,
             useNativeDriver: true,
           }),
           Animated.timing(strikeWidthAnim, {
             toValue: 1,
-            duration: 10000,
-
+            duration: 300,
             useNativeDriver: false,
           }),
         ]),
@@ -100,21 +87,71 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete }) => {
         }),
       ]).start();
     }
+
+    // Update the task in the API
+    try {
+      setIsUpdating(true);
+      
+      // Create the update payload
+      const updateData: UpdateTaskInput = {
+        task_id: task.task_id,
+        is_completed: newCheckedState,
+      };
+      
+      await updateTask(updateData);
+    } catch (error) {
+      console.error("Failed to update task completion status:", error);
+      
+      // Revert the UI state if the API call fails
+      setChecked(!newCheckedState);
+      
+      // Revert animations
+      if (!newCheckedState) {
+        Animated.parallel([
+          Animated.timing(opacityAnim, {
+            toValue: 0.6,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(strikeWidthAnim, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: false,
+          }),
+        ]).start();
+      } else {
+        Animated.parallel([
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(strikeWidthAnim, {
+            toValue: 0,
+            duration: 100,
+            useNativeDriver: false,
+          }),
+        ]).start();
+      }
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   // Set initial animation state whenever task or completion status changes
   useEffect(() => {
     // Reset and set the proper animation values based on current state
-    if (task.completed) {
+    if (task.is_completed) {
       opacityAnim.setValue(0.6);
       strikeWidthAnim.setValue(1);
+      setChecked(true);
     } else {
       opacityAnim.setValue(1);
       strikeWidthAnim.setValue(0);
+      setChecked(false);
     }
-  }, [task.completed, task.id]); // Add task.id to detect when a different task is passed
+  }, [task.is_completed, task.task_id]); // Add task.id to detect when a different task is passed
 
-  
   // Calculate width for strikethrough line
   const strikeWidth = strikeWidthAnim.interpolate({
     inputRange: [0, 1],
@@ -132,19 +169,20 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete }) => {
         checked={checked}
         onPress={handleToggle}
         containerStyle={styles.checkbox}
+        disabled={isUpdating}
       />
       <View style={styles.taskContent}>
         <View style={{ position: "relative" }}>
-          <Text style={styles.taskTitle}>{task.title}</Text>
+          <Text style={styles.taskTitle}>{task.task_name}</Text>
           <Animated.View
             style={[styles.strikeThrough, { width: strikeWidth }]}
           />
         </View>
         <View style={styles.taskDetails}>
           <Text style={styles.taskTime}>
-            {formatDateToShort(task.date)}, {task.startTime}-{task.endTime}
+            {formatDateToShort(task.task_start_date)}, {task.task_start_time}-{task.task_end_time}
           </Text>
-          {task.reminder && (
+          {task.task_reminder && (
             <Ionicons
               name="alarm-outline"
               size={16}
@@ -154,7 +192,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete }) => {
           )}
         </View>
       </View>
-      <Text style={styles.taskCategory}>{task.category}</Text>
+      <Text style={styles.taskCategory}>{task.task_list_id}</Text>
+      
+      {/* Menu button (optional) */}
+      <TouchableOpacity style={styles.menuButton}>
+        <Ionicons name="ellipsis-vertical" size={16} color="#999" />
+      </TouchableOpacity>
     </Animated.View>
   );
 };
@@ -172,6 +215,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
+    paddingRight: 10,
     marginBottom: 8,
     backgroundColor: "white",
     borderRadius: 8,
@@ -212,6 +256,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#999",
     paddingHorizontal: 16,
+  },
+  menuButton: {
+    padding: 5,
   },
 });
 
