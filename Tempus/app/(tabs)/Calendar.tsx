@@ -128,6 +128,7 @@ const CalendarScreen: React.FC = () => {
   // Load tasks and lists on component mount or when month/year changes
   useEffect(() => {
     refreshTasks(currentMonthNumber, currentYear);
+    console.log("Refreshing tasks for month:", currentMonthNumber, "year:", currentYear, "tasks:", tasks.length);
     refreshLists();
   }, [currentMonthNumber, currentYear]);
 
@@ -167,7 +168,7 @@ const CalendarScreen: React.FC = () => {
       const updateData: UpdateTaskInput = {
         task_id: task.task_id,
         is_completed: isCompleted,
-        is_event: true,
+        is_task: true,
       };
 
       await updateTask(updateData);
@@ -184,7 +185,7 @@ const CalendarScreen: React.FC = () => {
   // Generate marked dates for the calendar
   const getMarkedDates = () => {
     const markedDates: { [date: string]: any } = {};
-
+    
     tasks.forEach((task) => {
       const dateKey = task.task_start_date?.split("T")[0];
       if (dateKey) {
@@ -231,7 +232,7 @@ const CalendarScreen: React.FC = () => {
   if (taskLoading && tasks.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f9f9f9" />
+        <StatusBar barStyle="dark-content" backgroundColor="#f1f4fe" />
         <CalendarHeader title={currentMonth} />
         <LoadingView />
       </SafeAreaView>
@@ -240,7 +241,7 @@ const CalendarScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f9f9f9" />
+      <StatusBar barStyle="dark-content" backgroundColor="#f1f4fe" />
 
       {/* Header */}
       <CalendarHeader title={currentMonth} />
@@ -263,7 +264,8 @@ const CalendarScreen: React.FC = () => {
           markedDates={getMarkedDates()}
           showSixWeeks={true}
           theme={{
-            calendarBackground: "#f9f9f9",
+            calendarBackground: "#f1f4fe",
+            
             textSectionTitleColor: "#b6c1cd",
             selectedDayBackgroundColor: "#5D87FF",
             selectedDayTextColor: "#ffffff",
@@ -338,7 +340,7 @@ const CalendarScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#f1f4fe",
   },
   loadingContainer: {
     flex: 1,

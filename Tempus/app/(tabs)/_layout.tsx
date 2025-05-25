@@ -10,13 +10,6 @@ export default function TabLayout() {
       tabBar={(props) => <TabBar {...props} />}
     >
       <Tabs.Screen
-        name="home"
-        options={{
-          title: "Home",
-        }}
-      />
-
-      <Tabs.Screen
         name="Calendar"
         options={{
           title: "Calendar",
@@ -31,9 +24,16 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="profile"
+        name="AITaskGeneratorScreen"
         options={{
-          title: "Profile",
+          title: "AI",
+        }}
+      />
+
+      <Tabs.Screen
+        name="Settings"
+        options={{
+          title: "Settings",
         }}
       />
     </Tabs>

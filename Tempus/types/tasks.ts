@@ -18,7 +18,7 @@ export interface BaseTask {
   task_energy_level?: number;
 
   is_ai_generated?: boolean;
-  is_event?: boolean;
+  is_task?: boolean;
   is_completed?: boolean; // Nullable to allow for uninitialized state
 }
 

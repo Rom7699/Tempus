@@ -45,7 +45,7 @@ export default function Index() {
   // Redirect based on authentication status
   return isAuthenticated ? 
     <Redirect href="/(tabs)/Calendar" /> : 
-    <Redirect href="/(tabs)/Calendar" />;
+    <Redirect href="/(auth)/sign-in" />;
 }
 
 const styles = StyleSheet.create({

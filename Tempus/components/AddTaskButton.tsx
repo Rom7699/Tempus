@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface FloatingActionButtonProps {
   onPress: () => void;
-  customPosition?: {
+customPosition?: {
     bottom?: number;
     right?: number;
   };
@@ -43,14 +43,14 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: '#5D87FF',
-    justifyContent: 'center',
+        justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    zIndex: 1000, // Ensure it's above other elements
+zIndex: 1000, // Ensure it's above other elements
   },
 });
 

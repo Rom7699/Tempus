@@ -1,4 +1,4 @@
-import { View, Platform, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Platform, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { useLinkBuilder, useTheme } from "@react-navigation/native";
 import { Text, PlatformPressable } from "@react-navigation/elements";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
@@ -6,26 +6,26 @@ import { Ionicons } from '@expo/vector-icons';
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     const icon = { 
-        home: (props: any) => <Ionicons 
-            name='home-outline'
-            size={24} 
-            {...props}
-          />,
-        Calendar: (props: any) => <Ionicons 
-            name='calendar-outline'
-            size={24} 
-            {...props}
-          />,
-        Lists: (props: any) => <Ionicons 
-            name="list"
-            size={24} 
-            {...props}
-          />,
-        profile: (props: any) => <Ionicons 
-            name='person-outline'
-            size={24} 
-            {...props}
-          />,
+      Calendar: (props: any) => <Ionicons 
+      name='calendar-outline'
+      size={24} 
+      {...props}
+      />,
+      Lists: (props: any) => <Ionicons 
+      name="list"
+      size={24} 
+      {...props}
+      />,
+      AITaskGeneratorScreen: (props: any) => <Ionicons 
+      name="sparkles-outline"
+      size={24} 
+      {...props}
+      />,
+      Settings: (props: any) => <Ionicons 
+          name='settings-outline'
+          size={24} 
+          {...props}
+        />,
       };
   
     return (
@@ -90,6 +90,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     </View>
   );
 }
+const { width: screenWidth } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   tabBar: {
@@ -99,7 +100,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#fff",
-    marginHorizontal: 80,
+    marginHorizontal: screenWidth * 0.15,
+    paddingHorizontal: 20,
     paddingVertical: 15,
     borderRadius: 35,
     shadowColor: "#000",    

@@ -421,7 +421,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
         task_priority: priority,
         task_energy_level: energyLevel,
         task_list_id: selectedList?.list_id ? Number(selectedList.list_id) : undefined,
-        is_event: taskType === "event",
+        is_task: taskType === "task",
       };
 
       // Use the provided onSave function or fall back to the context's addTask

@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Calendar} from "react-native-calendars";
-export default function HomeScreen() {
+
+export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const [userAttributes, setUserAttributes] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(true);
@@ -120,11 +121,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f1f4fe',
   },
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f1f4fe',
   },
   scrollContainer: {
     flexGrow: 1,

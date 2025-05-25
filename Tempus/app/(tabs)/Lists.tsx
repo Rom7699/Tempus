@@ -205,7 +205,7 @@ const ListsScreen: React.FC = () => {
       const updateData: UpdateTaskInput = {
         task_id: task.task_id,
         is_completed: isCompleted,
-        is_event: true, // Set to true as required by the API
+        is_task: true, // Set to true as required by the API
       };
 
       await updateTask(updateData);
@@ -366,7 +366,7 @@ const ListsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#f1f4fe",
   },
   header: {
     flexDirection: "row",

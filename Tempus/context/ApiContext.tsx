@@ -126,11 +126,17 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
   const addTaskImpl = async (
     taskData: BaseTask
   ): Promise<AxiosResponse<any>> => {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${apiBase}/task`, taskData, { headers });
-    // After adding a task, refresh the task list
-    await refreshTasks();
-    return response;
+    try {
+      const headers = await getAuthHeaders();
+      const response = await axios.post(`${apiBase}/task`, taskData, { headers });
+      // After adding a task, refresh the task list
+      await refreshTasks();
+      console.log("Task added successfully:", response.data);
+      return response;
+    } catch (error: any) {
+      console.error("Error adding task:", error);
+      throw new Error(error.response?.data?.message || "Failed to add task");
+    }
   };
 
   const deleteTaskImpl = async (

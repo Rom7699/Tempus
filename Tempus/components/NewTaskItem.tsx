@@ -74,23 +74,23 @@ const TaskDetailItem: React.FC<TaskDetailItemProps> = ({ task, onPress }) => {
         <View style={styles.taskTitleRow}>
           <Text style={styles.taskTitle}>{task.task_name}</Text>
           <View style={styles.badgesContainer}>
-            {/* Display badge based on is_event value */}
-            {task.is_event ? (
+            {/* Display badge based on is_task value */}
+            {task.is_task ? (
               <View style={styles.eventBadge}>
-                <Ionicons name="calendar" size={12} color="#5D87FF" />
-                <Text style={styles.eventBadgeText}>Event</Text>
+                <Ionicons name="checkbox-outline" size={12} color="#5D87FF" />
+                <Text style={styles.eventBadgeText}>Task</Text>
               </View>
             ) : (
               <View style={styles.taskBadge}>
-                <Ionicons name="checkbox-outline" size={12} color="#4CAF50" />
-                <Text style={styles.taskBadgeText}>Task</Text>
+                <Ionicons name="calendar" size={12} color="#4CAF50" />
+                <Text style={styles.taskBadgeText}>Event</Text>
               </View>
             )}
 
             {/* AI badge for AI-generated tasks */}
             {task.is_ai_generated && (
               <View style={styles.aiBadge}>
-                <Ionicons name="flash" size={12} color="#9C27B0" />
+                <Ionicons name="sparkles-outline" size={12} color="#9C27B0" />
                 <Text style={styles.aiBadgeText}>AI</Text>
               </View>
             )}

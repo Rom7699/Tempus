@@ -96,8 +96,8 @@ const DisplayTaskModal: React.FC<DisplayTaskModalProps> = ({
   };
   // Handlers for task completion toggle
   const handleToggle = () => {
-    // Only allow toggling completion for events
-    if (localTask.is_event === true) {
+    // Only allow toggling completion for tasks
+    if (localTask.is_task === true) {
       const updatedCompletion = !localTask.is_completed;
       const updatedTask = { ...localTask, is_completed: updatedCompletion };
 
@@ -141,16 +141,16 @@ const DisplayTaskModal: React.FC<DisplayTaskModalProps> = ({
                 {/* Task Type Indicator */}
                 <View style={styles.taskTypeContainer}>
                   <Ionicons
-                    name={localTask.is_event ? "calendar" : "checkbox-outline"}
+                    name={localTask.is_task ? "calendar" : "checkbox-outline"}
                     size={16}
                     color="#5D87FF"
                   />
                   <Text style={styles.taskTypeText}>
-                    {localTask.is_event ? "Event" : "Task"}
+                    {localTask.is_task ? "Task" : "Event"}
                   </Text>
                 </View>
                 {/* Completion Status - Only show for events */}
-                {localTask.is_event === true && (
+                {localTask.is_task === true && (
                   <TouchableOpacity
                     style={[
                       styles.completionStatus,
