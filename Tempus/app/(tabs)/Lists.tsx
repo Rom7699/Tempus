@@ -40,7 +40,6 @@ const ListItem: React.FC<{ list: List; onPress: () => void }> = ({
   list,
   onPress,
 }) => {
-  console.log("ListItem rendered with list:", list);
   return (
     <TouchableOpacity
       style={[styles.listItem, { borderLeftColor: list.list_color }]}

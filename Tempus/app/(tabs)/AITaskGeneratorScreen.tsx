@@ -18,6 +18,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 // Import as fallback data
 import defaultHealthData from "../../Analyzed_Health.json";
+import { useApi } from "../../context/ApiContext";
 
 interface AITask {
   name: string;
@@ -47,6 +48,8 @@ export default function AITaskGeneratorScreen() {
   const [currentEnergyDemand, setCurrentEnergyDemand] = useState("50");
   const [currentFrequency, setCurrentFrequency] = useState("1");
   const [currentDuration, setCurrentDuration] = useState("30");
+
+  const { refreshTasks } = useApi();
 
   // Upload health data file
   const uploadHealthData = async () => {
@@ -205,6 +208,12 @@ export default function AITaskGeneratorScreen() {
     setIsGenerating(true);
     console.log("Generating schedule with tasks:", tasks);
 
+    const getNextWeekDate = () => {
+      const nextWeek = new Date();
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      return nextWeek;
+    };
+
     try {
       // Get JWT token for authentication
       const token = await AuthService.getJWTToken();
@@ -274,6 +283,14 @@ export default function AITaskGeneratorScreen() {
       );
     } finally {
       setIsGenerating(false);
+
+      const nextWeekDate = getNextWeekDate();
+      const month = nextWeekDate.getMonth() + 1;
+      const year = nextWeekDate.getFullYear();
+
+      console.log(`Refreshing tasks for next week: ${month}/${year}`);
+      refreshTasks(month, year);
+      refreshTasks();
     }
   };
 

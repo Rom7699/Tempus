@@ -4,15 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
 } from "react-native";
 import { CalendarList, DateData } from "react-native-calendars";
-import { Ionicons } from "@expo/vector-icons";
 import FloatingActionButton from "../../components/AddTaskButton";
-import TaskDetailItem from "../../components/NewTaskItem";
 import AddTaskBottomSheet from "../../components/AddTaskBottomSheet";
 import DisplayTaskModal from "@/components/DisplayTaskModal";
 import { CalendarHeader } from "../../components/calendar/CalendarHeader";
@@ -58,32 +55,6 @@ function formatDateToShort(dateString: string): string {
   return `${day} ${month}`;
 }
 
-// Empty state component
-const EmptyTasksView = ({ onAddTask }: { onAddTask: () => void }) => (
-  <View style={styles.emptyStateContainer}>
-    <Text style={styles.emptyStateText}>No tasks for this day</Text>
-    <TouchableOpacity style={styles.addTaskButton} onPress={onAddTask}>
-      <Text style={styles.addTaskButtonText}>Add a task</Text>
-    </TouchableOpacity>
-  </View>
-);
-
-// Error state component
-const ErrorView = ({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) => (
-  <View style={styles.errorContainer}>
-    <Text style={styles.errorText}>{message}</Text>
-    <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-      <Text style={styles.retryButtonText}>Retry</Text>
-    </TouchableOpacity>
-  </View>
-);
-
 // Loading state component
 const LoadingView = () => (
   <View style={styles.loadingContainer}>
@@ -128,9 +99,16 @@ const CalendarScreen: React.FC = () => {
   // Load tasks and lists on component mount or when month/year changes
   useEffect(() => {
     refreshTasks(currentMonthNumber, currentYear);
-    console.log("Refreshing tasks for month:", currentMonthNumber, "year:", currentYear, "tasks:", tasks.length);
+    console.log(
+      "Refreshing tasks for month:",
+      currentMonthNumber,
+      "year:",
+      currentYear,
+      "tasks:",
+      tasks.length
+    );
     refreshLists();
-  }, [currentMonthNumber, currentYear]);
+  }, [currentMonthNumber, currentYear, refreshTasks, refreshLists]);
 
   // Handlers
   const handleAddTask = async (taskData: BaseTask) => {
@@ -185,7 +163,7 @@ const CalendarScreen: React.FC = () => {
   // Generate marked dates for the calendar
   const getMarkedDates = () => {
     const markedDates: { [date: string]: any } = {};
-    
+
     tasks.forEach((task) => {
       const dateKey = task.task_start_date?.split("T")[0];
       if (dateKey) {
@@ -265,7 +243,7 @@ const CalendarScreen: React.FC = () => {
           showSixWeeks={true}
           theme={{
             calendarBackground: "#f1f4fe",
-            
+
             textSectionTitleColor: "#b6c1cd",
             selectedDayBackgroundColor: "#5D87FF",
             selectedDayTextColor: "#ffffff",
