@@ -7,15 +7,15 @@ const apiBase = 'https://0olevx3qah.execute-api.us-east-1.amazonaws.com';
 
 // Function to handle token retrieval and add to request headers
 const getAuthHeaders = async (): Promise<{ 'Content-Type': string; 'Authorization': string }> => {
-    const token = await AuthService.getJWTToken();
-    if (!token) {
-        throw new Error('No auth token available');
-    }
+  const token = await AuthService.getJWTToken();
+  if (!token) {
+    throw new Error('No auth token available');
+  }
 
-    return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-    };
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
 };
 
 
@@ -27,91 +27,91 @@ const getAuthHeaders = async (): Promise<{ 'Content-Type': string; 'Authorizatio
 // example ussage: const response = await addTask(taskData);
 // where taskData is an object containing the task details.
 // the returned data is an object containing the message and the created task, data.task is the created task, data.message is the success message.
-  export const addTask = async (taskData: BaseTask): Promise<{ message: string; task: Task }> => {
-    const headers = await getAuthHeaders();
-    try {
-        const  { data }  = await axios.post<{ message: string; task: Task }>(`${apiBase}/task`, taskData, { headers });
-        console.log(data.message);
-        return data;
-      } catch (error: any) {
-        console.error('Failed to add task:', error.response?.data || error.message);
-        throw new Error(error.response?.data?.message || 'Failed to add task');
-      }
-  };
+export const addTask = async (taskData: BaseTask): Promise<{ message: string; task: Task }> => {
+  const headers = await getAuthHeaders();
+  try {
+    const { data } = await axios.post<{ message: string; task: Task }>(`${apiBase}/task`, taskData, { headers });
+    console.log(data.message);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to add task:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to add task');
+  }
+};
 
 // Function to delete a task
 // example ussage: const response = await deleteTask("task_id_123");
-export const deleteTask = async (taskId: string): Promise<{ message: string; task: null }>=> {
-    const headers = await getAuthHeaders();
-    try {
-        const { data } = await axios.delete<{ message: string; task: null }>(
-          `${apiBase}/task/${taskId}`,
-          { headers }
-        );
-        console.log(data.message);
-        return data;
-      } catch (error: any) {
-        console.error('Failed to delete task:', error.response?.data || error.message);
-        throw new Error(error.response?.data?.message || 'Failed to delete task');
-      }
-  };
+export const deleteTask = async (taskId: string): Promise<{ message: string; task: null }> => {
+  const headers = await getAuthHeaders();
+  try {
+    const { data } = await axios.delete<{ message: string; task: null }>(
+      `${apiBase}/task/${taskId}`,
+      { headers }
+    );
+    console.log(data.message);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to delete task:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to delete task');
+  }
+};
 
 
 // Function to update a task
 // example ussage: const response = await updateTask("task_id_123", { task_name: "Updated Task Name", task_description: "Updated description" });   
 // Note: The taskId is the ID of the task you want to update, and updatedData is an object containing the fields you want to update.
 export const updateTask = async (updatedData: UpdateTaskInput): Promise<{ message: string; task: Task }> => {
-    const headers = await getAuthHeaders();
-    try {
-      const { data } = await axios.patch<{ message: string; task: Task }>(
-        `${apiBase}/task/${updatedData.task_id}`,
-        updatedData,
-        { headers }
-      );
-      console.log(data.message);
-      return data;
-    } catch (error: any) {
-      console.error('Failed to update task:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Failed to update task');
-    }
-  };
-  
+  const headers = await getAuthHeaders();
+  try {
+    const { data } = await axios.patch<{ message: string; task: Task }>(
+      `${apiBase}/task/${updatedData.task_id}`,
+      updatedData,
+      { headers }
+    );
+    console.log(data.message);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to update task:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to update task');
+  }
+};
+
 
 // Get single task by ID
 // example ussage: const task = await getTaskById("task_id_123");
 export const getTaskById = async (taskId: string): Promise<{ message: string; task: Task }> => {
-    const headers = await getAuthHeaders();
-    try {
-      const { data } = await axios.get<{ message: string; task: Task }>(
-        `${apiBase}/task/${taskId}`,
-        { headers }
-      );
-      console.log(data.message);
-      return data;
-    } catch (error: any) {
-      console.error('Failed to fetch task:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Failed to fetch task');
-    }
-  };
-  
+  const headers = await getAuthHeaders();
+  try {
+    const { data } = await axios.get<{ message: string; task: Task }>(
+      `${apiBase}/task/${taskId}`,
+      { headers }
+    );
+    console.log(data.message);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to fetch task:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to fetch task');
+  }
+};
+
 
 // Get tasks by specific day (YYYY-MM-DD)
 // example ussage: const tasksToday = await getTasksByDay("2025-05-04");
 export const getTasksByDay = async (date: string): Promise<{ message: string; tasksArr: Task[] }> => {
-    const headers = await getAuthHeaders();
-    try {
-      const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
-        `${apiBase}/tasks/day/${date}`,
-        { headers }
-      );
-      console.log(data.message);
-      return data;
-    } catch (error: any) {
-      console.error('Failed to fetch tasks:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Failed to fetch tasks');
-    }
-  };
-  
+  const headers = await getAuthHeaders();
+  try {
+    const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
+      `${apiBase}/tasks/day/${date}`,
+      { headers }
+    );
+    console.log(data.message);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to fetch tasks:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to fetch tasks');
+  }
+};
+
 
 // Get tasks by specific month (YYYY-MM)
 // example ussage: const tasksInMay = await getTasksByMonth(2025, 5);
@@ -120,110 +120,130 @@ export const getTasksByDay = async (date: string): Promise<{ message: string; ta
 //     return axios.get(`${apiBase}/tasks/month/${month}/${year}`, { headers });
 // };
 export const getTasksByMonth = async (
-    month: number,
-    year: number
-  ): Promise<{ message: string; tasksArr: Task[] }> => {
-    const headers = await getAuthHeaders();
-    try {
-      const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
-        `${apiBase}/tasks/month/${month}/${year}`,
-        { headers }
-      );
-      console.log(data.message);
-      return data;
-    } catch (error: any) {
-      console.error('Failed to fetch tasks by month:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Failed to fetch tasks by month');
-    }
-  };
-  
+  month: number,
+  year: number
+): Promise<{ message: string; tasksArr: Task[] }> => {
+  const headers = await getAuthHeaders();
+  try {
+    const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
+      `${apiBase}/tasks/month/${month}/${year}`,
+      { headers }
+    );
+    console.log(data.message);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to fetch tasks by month:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to fetch tasks by month');
+  }
+};
+
 // Get tasks by year
 // example ussage: const tasksInYear = await getTasksByYear(2025);
 export const getTasksByYear = async (
-    year: number
-  ): Promise<{ message: string; tasksArr: Task[] }> => {
-    const headers = await getAuthHeaders();
-    try {
-      const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
-        `${apiBase}/tasks/year/${year}`,
-        { headers }
-      );
-      console.log(data.message);
-      return data;
-    } catch (error: any) {
-      console.error('Failed to fetch tasks by year:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Failed to fetch tasks by year');
-    }
-  };
-  
+  year: number
+): Promise<{ message: string; tasksArr: Task[] }> => {
+  const headers = await getAuthHeaders();
+  try {
+    const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
+      `${apiBase}/tasks/year/${year}`,
+      { headers }
+    );
+    console.log(data.message);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to fetch tasks by year:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to fetch tasks by year');
+  }
+};
+
+// Get tasks from a specific date for a number of days after that date
+// example usage: const tasks = await getTasksFromDate("2025-05-01", 7); YYYY-MM-DD format for startDate, and days is the number of days to fetch tasks for.
+export const getTasksFromDate = async (
+  startDate: string,
+  days: number
+): Promise<{ message: string; tasksArr: Task[] }> => {
+  const headers = await getAuthHeaders();
+
+  try {
+    const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
+      `${apiBase}/tasks/from/${startDate}?days=${days}`,
+      { headers }
+    );
+    console.log(data.message);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to fetch tasks from date:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to fetch tasks from date');
+  }
+};
 
 // Add a new list
 // example ussage:const response = await addList({ name: "Work", color: "#FF0000", icon: "work" });
 export const addList = async (listData: BaseList): Promise<{ message: string; list: List }> => {
-    const headers = await getAuthHeaders();
-    try {
-      const { data } = await axios.post<{ message: string; list: List }>(
-        `${apiBase}/list`,
-        listData,
-        { headers }
-      );
-      console.log(data.message);
-      return data;
-    } catch (error: any) {
-      console.error('Failed to add list:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Failed to add list');
-    }
-  };
-  
+  const headers = await getAuthHeaders();
+  try {
+    const { data } = await axios.post<{ message: string; list: List }>(
+      `${apiBase}/list`,
+      listData,
+      { headers }
+    );
+    console.log(data.message);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to add list:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to add list');
+  }
+};
+
 
 // Get all user's lists
 // example ussage: const lists = await getLists();
 export const getLists = async (): Promise<{ message: string; listsArr: List[] }> => {
-    const headers = await getAuthHeaders();
-    try {
-      const { data } = await axios.get<{ message: string; listsArr: List[] }>(
-        `${apiBase}/lists`,
-        { headers }
-      );
-      console.log(data.message);
-      return data;
-    } catch (error: any) {
-      console.error('Failed to fetch lists:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Failed to fetch lists');
-    }
-  };
+  const headers = await getAuthHeaders();
+  try {
+    const { data } = await axios.get<{ message: string; listsArr: List[] }>(
+      `${apiBase}/lists`,
+      { headers }
+    );
+    console.log(data.message);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to fetch lists:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to fetch lists');
+  }
+};
 
-  // Get a specific list by ID
+// Get a specific list by ID
 // example usage: const list = await getListById(5);
 export const getListById = async (listId: number): Promise<{ message: string; list: List }> => {
-    const headers = await getAuthHeaders();
-    try {
-      const { data } = await axios.get<{ message: string; list: List }>(
-        `${apiBase}/list/${listId}`,
-        { headers }
-      );
-      console.log(`Fetched list ${listId}: ${data.message}`);
-      return data;
-    } catch (error: any) {
-      console.error(`Failed to fetch list ${listId}:`, error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || `Failed to fetch list ${listId}`);
-    }
-  };  
+  const headers = await getAuthHeaders();
+  try {
+    const { data } = await axios.get<{ message: string; list: List }>(
+      `${apiBase}/list/${listId}`,
+      { headers }
+    );
+    console.log(`Fetched list ${listId}: ${data.message}`);
+    return data;
+  } catch (error: any) {
+    console.error(`Failed to fetch list ${listId}:`, error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || `Failed to fetch list ${listId}`);
+  }
+};
 
-  // Get tasks by list ID
+// Get tasks by list ID
 // example ussage: const tasks = await getTasksByListId(1);
-  export const getTasksByListId = async (listId: number): Promise<{ message: string; tasksArr: Task[] }> => {
-    const headers = await getAuthHeaders();
-    try {
-      const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
-        `${apiBase}/tasks/list/${listId}`,
-        { headers }
-      );
-      console.log(data.message);
-      return data;
-    } catch (error: any) {
-      console.error('Failed to fetch tasks by list ID:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || 'Failed to fetch tasks by list ID');
-    }
-  };
-  
+export const getTasksByListId = async (listId: number): Promise<{ message: string; tasksArr: Task[] }> => {
+  const headers = await getAuthHeaders();
+  try {
+    const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
+      `${apiBase}/tasks/list/${listId}`,
+      { headers }
+    );
+    console.log(data.message);
+    return data;
+  } catch (error: any) {
+    console.error('Failed to fetch tasks by list ID:', error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || 'Failed to fetch tasks by list ID');
+  }
+};
+

@@ -112,7 +112,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [location, setLocation] = useState('');
   const [attendees, setAttendees] = useState('');
   const [priority, setPriority] = useState(2);
-  const [energyLevel, setEnergyLevel] = useState(50);
+  const [energyLevel, setEnergyLevel] = useState(0);
 
   // UI state for pickers
   const [showPicker, setShowPicker] = useState(false);
@@ -165,7 +165,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         setLocation('');
         setAttendees('');
         setPriority(2);
-        setEnergyLevel(50);
+        setEnergyLevel(0);
         setTempDate(null);
 
         if (availableLists === undefined) {
@@ -508,11 +508,11 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               </TouchableOpacity>
 
               {/* ✅ This will now show the list below the selector */}
-              {/* {listsSection.map(section => (
+              {listsSection.map(section => (
                 <View key={section.key}>
                   {section.render()}
                 </View>
-              ))} */}
+              ))}
             </>
           );
         }
