@@ -146,8 +146,6 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     const response = await axios.delete(`${apiBase}/task/${taskId}`, {
       headers,
     });
-    // After deleting a task, refresh the task list
-    await refreshTasks();
     return response;
   };
 

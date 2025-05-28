@@ -57,17 +57,13 @@ const ListsScreen: React.FC = () => {
   // Use the API context
   const {
     lists,
-    tasks,
     listLoading,
     listError,
-    taskLoading,
-    taskError,
     addList,
     addTask,
     deleteTask,
     updateTask,
     refreshLists,
-    refreshTasks,
     getTasksByListId,
   } = useApi();
 

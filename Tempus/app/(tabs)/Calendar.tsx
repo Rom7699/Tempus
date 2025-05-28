@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -133,6 +133,7 @@ const CalendarScreen: React.FC = () => {
     try {
       await deleteTask(taskId);
       setTaskModalVisible(false);
+      refreshTasks(currentMonthNumber, currentYear);
     } catch (error) {
       console.error("Error deleting task:", error);
     }
@@ -161,7 +162,8 @@ const CalendarScreen: React.FC = () => {
   };
 
   // Generate marked dates for the calendar
-  const getMarkedDates = () => {
+  const markedDates = useMemo(() => {
+    console.log("Generating marked dates for tasks:", tasks.length);
     const markedDates: { [date: string]: any } = {};
 
     tasks.forEach((task) => {
@@ -185,7 +187,7 @@ const CalendarScreen: React.FC = () => {
     }
 
     return markedDates;
-  };
+  }, [tasks, selectedDate]);
 
   // Handle date selection
   const handleDateSelect = (date: DateData) => {
@@ -245,7 +247,7 @@ const CalendarScreen: React.FC = () => {
             "0"
           )}-01`}
           onVisibleMonthsChange={([month]) => handleMonthChange(month)}
-          markedDates={getMarkedDates()}
+          markedDates={markedDates}
           showSixWeeks={true}
           theme={{
             calendarBackground: "#f1f4fe",
