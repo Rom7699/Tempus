@@ -1,117 +1,104 @@
-import { View, Platform, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
-import { useLinkBuilder, useTheme } from "@react-navigation/native";
-import { Text, PlatformPressable } from "@react-navigation/elements";
+import React from "react";
+import { View, TouchableOpacity, StyleSheet, Text } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "expo-router";
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-    const icon = { 
-      Calendar: (props: any) => <Ionicons 
-      name='calendar-outline'
-      size={24} 
-      {...props}
-      />,
-      Lists: (props: any) => <Ionicons 
-      name="list"
-      size={24} 
-      {...props}
-      />,
-      AITaskGeneratorScreen: (props: any) => <Ionicons 
-      name="sparkles-outline"
-      size={24} 
-      {...props}
-      />,
-      Settings: (props: any) => <Ionicons 
-          name='settings-outline'
-          size={24} 
-          {...props}
-        />,
-      };
-  
-    return (
-    <View style={styles.tabBar}>
-      {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
-        const label =
-          options.tabBarLabel !== undefined
-            ? options.tabBarLabel
-            : options.title !== undefined
-            ? options.title
-            : route.name;
+  return (
+    <View style={styles.container}>
+      <View style={styles.tabBar}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const label = options.title || route.name;
+          const isFocused = state.index === index;
 
-        const isFocused = state.index === index;
+          const onPress = () => {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
 
-        const onPress = () => {
-          const event = navigation.emit({
-            type: "tabPress",
-            target: route.key,
-            canPreventDefault: true,
-          });
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
 
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
+          let iconName = "help-circle-outline";
+          
+          // Map route names to icons
+          if (route.name === "Calendar") {
+            iconName = "calendar-outline";
+          } else if (route.name === "Lists") {
+            iconName = "list-outline";
+          } else if (route.name === "AITaskGeneratorScreen") {
+            iconName = "sparkles-outline";
+          } else if (route.name === "Settings") {
+            iconName = "settings-outline";
           }
-        };
 
-        const onLongPress = () => {
-          navigation.emit({
-            type: "tabLongPress",
-            target: route.key,
-          });
-        };
-
-        return (
-          <TouchableOpacity
-            key={route.name}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel="options.tabBarAccessibilityLabel"
-            testID={options.tabBarButtonTestID}
-            onPress={onPress}
-            onLongPress={onLongPress}
-            style={styles.tabBarItem}
-          >
-            {icon[route.name]({ color: isFocused ? "#5D87FF" : "#222" })}
-            <Text style ={{ color: isFocused ? "#5D87FF" : "#222" }}>
-              {typeof label === 'string' 
-                ? label 
-                : typeof label === 'function' 
-                  ? label({
-                      focused: isFocused,
-                      color: isFocused ? "#5D87FF" : "#222",
-                      position: 'below-icon',
-                      children: route.name
-                    })
-                  : route.name}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+          return (
+            <TouchableOpacity
+              key={index}
+              activeOpacity={0.7}
+              style={[
+                styles.tabItem,
+              ]}
+              onPress={onPress}
+            >
+              <View style={styles.iconContainer}>
+                {route.name === "Calendar" && isFocused ? (
+                  <View style={styles.calendarIconWrapper}>
+                    <Text style={styles.calendarText}>{new Date().getDate()}</Text>
+                  </View>
+                ) : (
+                  <Ionicons
+                    name={iconName as any}
+                    size={30}
+                    color={isFocused ? "#5271FF" : "#AEAEAE"}
+                  />
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
-const { width: screenWidth } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-  tabBar: {
-    position: "absolute",
-    bottom: 25,
-    flexDirection: 'row',
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    marginHorizontal: screenWidth * 0.15,
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderRadius: 35,
-    shadowColor: "#000",    
-    shadowOffset: {  width: 0, height: 10},
-    shadowRadius: 10,
-    shadowOpacity: 0.1,
+  container: {
+    backgroundColor: "#f2f4ff",
   },
-  tabBarItem:{
+  tabBar: {
+    flexDirection: "row",
+    height: 70,
+    justifyContent: "space-around",
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  tabItem: {
     flex: 1,
-    justifyContent: "center",
     alignItems: "center",
-  }
+    justifyContent: "center",
+  },
+  iconContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calendarIconWrapper: {
+    width: 40,
+    height: 40,
+    backgroundColor: "#5271FF",
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calendarText: {
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    fontSize: 18,
+  },
 });

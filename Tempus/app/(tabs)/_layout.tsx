@@ -1,6 +1,4 @@
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { View, Text } from "react-native";
 import { TabBar } from "../../components/TabBar";
 
 export default function TabLayout() {

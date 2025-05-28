@@ -108,7 +108,7 @@ const CalendarScreen: React.FC = () => {
       tasks.length
     );
     refreshLists();
-  }, [currentMonthNumber, currentYear, refreshTasks, refreshLists]);
+  }, [currentMonthNumber, currentYear]);
 
   // Handlers
   const handleAddTask = async (taskData: BaseTask) => {
@@ -197,6 +197,12 @@ const CalendarScreen: React.FC = () => {
     setCurrentMonth(monthNames[date.month - 1]);
     setCurrentMonthNumber(date.month);
     setCurrentYear(date.year);
+
+    const firstDayOfMonth = `${date.year}-${String(date.month).padStart(
+      2,
+      "0"
+    )}-01`;
+    setSelectedDate(firstDayOfMonth);
   };
 
   // Filter tasks for the selected date

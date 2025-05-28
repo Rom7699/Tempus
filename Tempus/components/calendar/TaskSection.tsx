@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import TaskDetailItem from '../NewTaskItem';
-import { EmptyTasksView, ErrorView } from './CalendarStateViews';
-import { Task } from '@/types/tasks';
+import React, { useEffect, useRef, useMemo } from "react";
+import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import TaskDetailItem from "../NewTaskItem";
+import { EmptyTasksView, ErrorView } from "./CalendarStateViews";
+import { Task } from "@/types/tasks";
 
 interface TaskSectionProps {
   selectedDate: string;
@@ -27,25 +27,60 @@ export const TaskSection: React.FC<TaskSectionProps> = ({
     const date = new Date(dateString);
     const day = date.getDate();
     const monthNames = [
-      "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-      "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+      "JAN",
+      "FEB",
+      "MAR",
+      "APR",
+      "MAY",
+      "JUN",
+      "JUL",
+      "AUG",
+      "SEP",
+      "OCT",
+      "NOV",
+      "DEC",
     ];
     const month = monthNames[date.getMonth()];
     return `${day} ${month}`;
   };
 
+  const renderCount = useRef(0);
+
+  useEffect(() => {
+    renderCount.current += 1;
+    console.log(`🔄 TaskSection render #${renderCount.current}`);
+    console.log("📊 Render triggered by:", {
+      selectedDate,
+      tasksLength: tasks.length,
+      taskLoading,
+      taskError: !!taskError,
+    });
+  });
+
+  const sortedTasks = useMemo(() => {
+    console.log("🔄 Sorting tasks (expensive operation)");
+    return [...tasks].sort((a, b) => {
+      const timeA = a.task_start_time || "00:00";
+      const timeB = b.task_start_time || "00:00";
+
+      const [hoursA, minutesA] = timeA.split(":").map(Number);
+      const [hoursB, minutesB] = timeB.split(":").map(Number);
+
+      const totalMinutesA = hoursA * 60 + minutesA;
+      const totalMinutesB = hoursB * 60 + minutesB;
+
+      return totalMinutesA - totalMinutesB;
+    });
+  }, [tasks]);
+
   return (
     <View style={styles.tasksSection}>
-      <Text style={styles.sectionTitle}>
-        {formatDateToShort(selectedDate)}
-      </Text>
+      <Text style={styles.sectionTitle}>{formatDateToShort(selectedDate)}</Text>
 
-      {taskError && (
-        <ErrorView message={taskError} onRetry={onRetry} />
-      )}
+      {taskError && <ErrorView message={taskError} onRetry={onRetry} />}
 
       <View style={styles.tasksList}>
-        {tasks.map((task) => (
+        {sortedTasks.map((task) => (
           <TaskDetailItem
             key={task.task_id}
             task={task}
@@ -68,9 +103,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 16,
-    color: '#333',
+    color: "#333",
   },
   tasksList: {
     flex: 1,
