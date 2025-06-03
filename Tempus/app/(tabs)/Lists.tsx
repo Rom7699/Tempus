@@ -277,7 +277,6 @@ const ListsScreen: React.FC = () => {
               {/* FAB to add task */}
               <FloatingActionButton
                 onPress={() => setIsAddTaskModalVisible(true)}
-                customPosition={{ bottom: 60 }}
               />
             </View>
           )}

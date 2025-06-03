@@ -4,13 +4,14 @@
     "slug": "Tempus",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/TempusIcon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.Tempus"
+      "bundleIdentifier": "com.anonymous.Tempus",
+      "icon": "./assets/images/TempusIcon.png"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +23,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/TempusIcon.png"
     },
     "plugins": [
       "expo-router",

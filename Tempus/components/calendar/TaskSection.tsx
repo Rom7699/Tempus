@@ -44,21 +44,7 @@ export const TaskSection: React.FC<TaskSectionProps> = ({
     return `${day} ${month}`;
   };
 
-  const renderCount = useRef(0);
-
-  useEffect(() => {
-    renderCount.current += 1;
-    console.log(`🔄 TaskSection render #${renderCount.current}`);
-    console.log("📊 Render triggered by:", {
-      selectedDate,
-      tasksLength: tasks.length,
-      taskLoading,
-      taskError: !!taskError,
-    });
-  });
-
   const sortedTasks = useMemo(() => {
-    console.log("🔄 Sorting tasks (expensive operation)");
     return [...tasks].sort((a, b) => {
       const timeA = a.task_start_time || "00:00";
       const timeB = b.task_start_time || "00:00";

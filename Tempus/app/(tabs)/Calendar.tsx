@@ -99,14 +99,6 @@ const CalendarScreen: React.FC = () => {
   // Load tasks and lists on component mount or when month/year changes
   useEffect(() => {
     refreshTasks(currentMonthNumber, currentYear);
-    console.log(
-      "Refreshing tasks for month:",
-      currentMonthNumber,
-      "year:",
-      currentYear,
-      "tasks:",
-      tasks.length
-    );
     refreshLists();
   }, [currentMonthNumber, currentYear]);
 
@@ -115,6 +107,7 @@ const CalendarScreen: React.FC = () => {
     try {
       await addTask(taskData);
       setAddTaskModalVisible(false);
+      refreshTasks(currentMonthNumber, currentYear);
     } catch (error) {
       console.error("Error adding task:", error);
     }
@@ -124,6 +117,8 @@ const CalendarScreen: React.FC = () => {
     try {
       // For editing, we'll need to implement this. For now, just close modals
       setTaskModalVisible(false);
+      refreshTasks(currentMonthNumber, currentYear);
+      console.log("refreshing tasks after edit");
     } catch (error) {
       console.error("Error editing task:", error);
     }
@@ -214,17 +209,6 @@ const CalendarScreen: React.FC = () => {
     return taskDate === normalizedSelectedDate;
   });
 
-  // If loading initial data
-  if (taskLoading && tasks.length === 0) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f1f4fe" />
-        <CalendarHeader title={currentMonth} />
-        <LoadingView />
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f1f4fe" />
@@ -277,12 +261,12 @@ const CalendarScreen: React.FC = () => {
         />
       </View>
 
-      {/* Refreshing indicator */}
+      {/* Refreshing indicator
       {taskLoading && tasks.length > 0 && (
         <View style={styles.refreshingIndicator}>
           <ActivityIndicator size="small" color="#5D87FF" />
         </View>
-      )}
+      )} */}
 
       <ScrollView style={{ flex: 1 }}>
         <TaskSection

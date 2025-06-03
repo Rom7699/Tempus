@@ -97,6 +97,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
       const response = await getTasksByMonthImpl(m, y);
       // Store the complete response object instead of just response.data
       setTasks(response.tasksArr);
+      console.log("Tasks refreshed successfully for month:", m, "year:", y);
     } catch (error: any) {
       setTaskError(error.message || "Error fetching tasks");
       console.error("Error refreshing tasks:", error);
@@ -130,8 +131,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
       const headers = await getAuthHeaders();
       const response = await axios.post(`${apiBase}/task`, taskData, { headers });
       // After adding a task, refresh the task list
-      await refreshTasks();
-      console.log("Task added successfully:", response.data);
+      console.log("Task added successfully");
       return response;
     } catch (error: any) {
       console.error("Error adding task:", error);
