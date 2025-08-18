@@ -11,37 +11,44 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useAuth } from "../../context/AuthContext";
-import { Link, useRouter } from "expo-router";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "expo-router";
+import {
+  signUpSchema,
+  SignInFormData,
+  SignUpFormData,
+} from "@/types/authSchema";
 
 export default function SignUpScreen() {
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { signUp } = useAuth();
   const router = useRouter();
 
-  const handleSignUp = async () => {
-    // Validate inputs
-    if (!fullName || !email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isValid },
+  } = useForm<SignUpFormData>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+    mode: "onChange", // Validate on change
+  });
 
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return;
-    }
-
+  const onSubmit = async (data: SignUpFormData) => {
     setIsLoading(true);
     try {
-      await signUp(fullName, email, password);
+      await signUp(data.fullName, data.email, data.password);
       // Navigate to confirmation screen with email
-      router.push({
+      router.navigate({
         pathname: "/(auth)/confirm-registration",
-        params: { email },
+        params: { email: data.email },
       });
     } catch (error: any) {
       Alert.alert(
@@ -62,54 +69,104 @@ export default function SignUpScreen() {
         <View style={styles.container}>
           <Text style={styles.title}>Create Account</Text>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder="Enter your full name"
-            />
-          </View>
+          {/* Full Name Input */}
+          <Controller
+            control={control}
+            name="fullName"
+            render={({
+              field: { onChange, onBlur, value },
+              fieldState: { error },
+            }) => (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Full Name</Text>
+                <TextInput
+                  style={[styles.input, error && styles.inputError]}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Enter your full name"
+                />
+                {error && <Text style={styles.errorText}>{error.message}</Text>}
+              </View>
+            )}
+          />
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
+          {/* Email Input */}
+          <Controller
+            control={control}
+            name="email"
+            render={({
+              field: { onChange, onBlur, value },
+              fieldState: { error },
+            }) => (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={[styles.input, error && styles.inputError]}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                />
+                {error && <Text style={styles.errorText}>{error.message}</Text>}
+              </View>
+            )}
+          />
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Enter your password"
-              secureTextEntry
-            />
-          </View>
+          {/* Password Input */}
+          <Controller
+            control={control}
+            name="password"
+            render={({
+              field: { onChange, onBlur, value },
+              fieldState: { error },
+            }) => (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Password</Text>
+                <TextInput
+                  style={[styles.input, error && styles.inputError]}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Enter your password"
+                  secureTextEntry
+                />
+                {error && <Text style={styles.errorText}>{error.message}</Text>}
+              </View>
+            )}
+          />
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Confirm Password</Text>
-            <TextInput
-              style={styles.input}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Confirm your password"
-              secureTextEntry
-            />
-          </View>
+          {/* Confirm Password Input */}
+          <Controller
+            control={control}
+            name="confirmPassword"
+            render={({
+              field: { onChange, onBlur, value },
+              fieldState: { error },
+            }) => (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Confirm Password</Text>
+                <TextInput
+                  style={[styles.input, error && styles.inputError]}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Confirm your password"
+                  secureTextEntry
+                />
+                {error && <Text style={styles.errorText}>{error.message}</Text>}
+              </View>
+            )}
+          />
 
           <TouchableOpacity
-            style={styles.button}
-            onPress={handleSignUp}
-            disabled={isLoading}
+            style={[
+              styles.button,
+              (!isValid || isLoading) && styles.buttonDisabled,
+            ]}
+            onPress={handleSubmit(onSubmit)}
+            disabled={isLoading || !isValid}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
@@ -162,12 +219,25 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
+  inputError: {
+    borderColor: "#ff6b6b",
+    borderWidth: 2,
+  },
+  errorText: {
+    color: "#ff6b6b",
+    fontSize: 14,
+    marginTop: 5,
+    fontWeight: "500",
+  },
   button: {
     backgroundColor: "#007bff",
     padding: 15,
     borderRadius: 8,
     alignItems: "center",
     marginTop: 10,
+  },
+  buttonDisabled: {
+    backgroundColor: "#cccccc",
   },
   buttonText: {
     color: "#fff",

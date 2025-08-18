@@ -2,7 +2,6 @@ import React, { createContext, useState, useEffect, useContext, ReactNode } from
 import { CognitoUser } from 'amazon-cognito-identity-js';
 import { router } from 'expo-router';
 import { AuthService } from '../services/AuthService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthContextType {
   user: CognitoUser | null;

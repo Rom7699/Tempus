@@ -22,6 +22,13 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="Goals"
+        options={{
+          title: "Goals",
+        }}
+      />
+
+      <Tabs.Screen
         name="AITaskGeneratorScreen"
         options={{
           title: "AI",

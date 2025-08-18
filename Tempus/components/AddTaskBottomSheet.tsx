@@ -504,6 +504,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
               </View>
             )}
 
+            {/* Form fields */}
             <ScrollView style={styles.content}>
               {/* Title input */}
               <TextInput

@@ -3,7 +3,6 @@ import {
   CognitoUserAttribute,
   AuthenticationDetails,
   ISignUpResult,
-  CognitoUserPool
 } from 'amazon-cognito-identity-js';
 import { userPool } from '../config/cognito';
 import { CognitoStorage } from '../utils/CognitoStorage';
@@ -115,12 +114,6 @@ export class AuthService {
           console.error('[AuthService] Login failed:', err);
           reject(err);
         },
-        // Handle new password required (for admin created users)
-        newPasswordRequired: (userAttributes, requiredAttributes) => {
-          // This is relevant if you allow admin creation of users
-          console.log('[AuthService] New password required');
-          reject(new Error('New password setup required. Please contact support.'));
-        }
       });
     });
   };

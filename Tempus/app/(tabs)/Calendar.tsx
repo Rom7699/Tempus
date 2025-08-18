@@ -18,7 +18,7 @@ import { BaseTask, Task, UpdateTaskInput } from "@/types/tasks";
 import { TaskSection } from "../../components/calendar/TaskSection";
 
 // Constants
-const monthNames = [
+const monthNames: string[] = [
   "January",
   "February",
   "March",
@@ -37,7 +37,7 @@ const monthNames = [
 function formatDateToShort(dateString: string): string {
   const date = new Date(dateString);
   const day = date.getDate();
-  const monthNames = [
+  const monthNames: string[] = [
     "JAN",
     "FEB",
     "MAR",
@@ -54,14 +54,6 @@ function formatDateToShort(dateString: string): string {
   const month = monthNames[date.getMonth()];
   return `${day} ${month}`;
 }
-
-// Loading state component
-const LoadingView = () => (
-  <View style={styles.loadingContainer}>
-    <ActivityIndicator size="large" color="#5D87FF" />
-    <Text style={styles.loadingText}>Loading tasks...</Text>
-  </View>
-);
 
 // Main Calendar Screen component
 const CalendarScreen: React.FC = () => {
@@ -260,13 +252,6 @@ const CalendarScreen: React.FC = () => {
           hideExtraDays={false}
         />
       </View>
-
-      {/* Refreshing indicator
-      {taskLoading && tasks.length > 0 && (
-        <View style={styles.refreshingIndicator}>
-          <ActivityIndicator size="small" color="#5D87FF" />
-        </View>
-      )} */}
 
       <ScrollView style={{ flex: 1 }}>
         <TaskSection

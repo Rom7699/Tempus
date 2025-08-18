@@ -31,6 +31,12 @@
           <string>com.anonymous.Tempus</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>exp+tempus</string>
+        </array>
+      </dict>
     </array>
     <key>CFBundleVersion</key>
     <string>1</string>
@@ -45,6 +51,10 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>NSHealthShareUsageDescription</key>
+    <string>Tempus uses HealthKit to read your health data including heart rate, step count, and sleep patterns to optimize task scheduling based on your energy levels and activity patterns.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>Tempus uses HealthKit to write workout and activity data when you complete fitness-related tasks to help track your progress.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

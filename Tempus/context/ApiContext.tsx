@@ -10,7 +10,7 @@ import { AuthService } from "../services/AuthService";
 import { BaseTask, Task, UpdateTaskInput } from "../types/tasks";
 import { BaseList, List } from "../types/lists";
 
-const apiBase = "https://0olevx3qah.execute-api.us-east-1.amazonaws.com";
+const apiBase = "https://b1s33elek9.execute-api.us-east-1.amazonaws.com";
 
 // Define the shape of our context
 interface ApiContextType {
@@ -95,7 +95,6 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
       const m = month || currentDate.getMonth() + 1;
       const y = year || currentDate.getFullYear();
       const response = await getTasksByMonthImpl(m, y);
-      // Store the complete response object instead of just response.data
       setTasks(response.tasksArr);
       console.log("Tasks refreshed successfully for month:", m, "year:", y);
     } catch (error: any) {

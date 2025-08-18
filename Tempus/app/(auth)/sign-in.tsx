@@ -1,3 +1,4 @@
+// app/(auth)/sign-in.tsx
 import React, { useState } from 'react';
 import { 
   View, 
@@ -11,24 +12,34 @@ import {
   Platform,
   ScrollView
 } from 'react-native';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'expo-router';
+import { signInSchema, SignInFormData } from '../../types/authSchema';
 
 export default function SignInScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuth();
 
-  const handleSignIn = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
-      return;
-    }
+  const { 
+    control, 
+    handleSubmit, 
+    formState: { errors, isValid } 
+  } = useForm<SignInFormData>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+    mode: 'onSubmit', // Validate on form submission
+  });
 
+  // Submit handler - receives validated data
+  const onSubmit = async (data: SignInFormData) => {
     setIsLoading(true);
     try {
-      await signIn(email, password);
+      await signIn(data.email, data.password);
       // Navigation will be handled by the auth context
     } catch (error: any) {
       Alert.alert('Sign In Failed', error.message || 'An unknown error occurred');
@@ -46,33 +57,64 @@ export default function SignInScreen() {
         <View style={styles.container}>
           <Text style={styles.title}>Sign In</Text>
           
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
+          {/* Email Input with Controller */}
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    error && styles.inputError // Red border if error
+                  ]}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                />
+                {error && (
+                  <Text style={styles.errorText}>{error.message}</Text>
+                )}
+              </View>
+            )}
+          />
           
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Enter your password"
-              secureTextEntry
-            />
-          </View>
+          {/* Password Input with Controller */}
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, onBlur, value }, fieldState: { error } }) => (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Password</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    error && styles.inputError
+                  ]}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  placeholder="Enter your password"
+                  secureTextEntry
+                />
+                {error && (
+                  <Text style={styles.errorText}>{error.message}</Text>
+                )}
+              </View>
+            )}
+          />
           
+          {/* Submit Button */}
           <TouchableOpacity 
-            style={styles.button} 
-            onPress={handleSignIn}
-            disabled={isLoading}
+            style={[
+              styles.button,
+              (!isValid || isLoading) && styles.buttonDisabled
+            ]} 
+            onPress={handleSubmit(onSubmit)} // handleSubmit validates then calls onSubmit
+            disabled={isLoading || !isValid}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
@@ -130,12 +172,26 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
+  // New styles for validation
+  inputError: {
+    borderColor: '#ff6b6b',
+    borderWidth: 2,
+  },
+  errorText: {
+    color: '#ff6b6b',
+    fontSize: 14,
+    marginTop: 5,
+    fontWeight: '500',
+  },
   button: {
     backgroundColor: '#007bff',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 10,
+  },
+  buttonDisabled: {
+    backgroundColor: '#cccccc',
   },
   buttonText: {
     color: '#fff',

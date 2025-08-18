@@ -35,10 +35,27 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "Tempus uses HealthKit to read your health data including heart rate, step count, and sleep patterns to optimize task scheduling based on your energy levels and activity patterns.",
+          "healthUpdatePermission": "Tempus uses HealthKit to write workout and activity data when you complete fitness-related tasks to help track your progress.",
+          "isClinicalDataEnabled": false
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "5132446c-7775-4557-89b7-383b9eb91f8e"
+      }
+    },
+    "owner": "rom7699"
   }
 }
