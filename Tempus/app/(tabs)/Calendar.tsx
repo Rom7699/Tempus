@@ -134,6 +134,7 @@ const CalendarScreen: React.FC = () => {
       const updateData: UpdateTaskInput = {
         task_id: task.task_id,
         is_completed: isCompleted,
+        task_goal_id: task.task_goal_id,
         is_task: true,
       };
 

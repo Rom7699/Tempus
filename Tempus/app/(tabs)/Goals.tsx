@@ -9,30 +9,20 @@ import {
   StatusBar,
   Animated,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useApi } from '../../context/ApiContext';
+import { Goal, BaseGoal } from '../../types/goals';
+import AddGoalModal from '../../components/AddGoalModal';
 
 const { width } = Dimensions.get('window');
-
-// Types
-interface Goal {
-  id: string;
-  title: string;
-  description: string;
-  targetCount: number;
-  currentCount: number;
-  period: 'daily' | 'weekly' | 'monthly';
-  category: 'fitness' | 'work' | 'personal' | 'mindfulness' | 'learning';
-  color: string;
-  icon: string;
-  createdAt: string;
-  deadline?: string;
-}
 
 interface GoalCardProps {
   goal: Goal;
   onPress: () => void;
+  onIncrement: () => void;
 }
 
 // Progress Circle Component
@@ -155,31 +145,21 @@ const SimpleProgressCircle: React.FC<{
 };
 
 // Goal Card Component
-const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress }) => {
-  const progress = goal.targetCount > 0 ? goal.currentCount / goal.targetCount : 0;
+const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onIncrement }) => {
+  const progress = goal.goal_target > 0 ? goal.goal_progress / goal.goal_target : 0;
   const progressPercentage = Math.min(progress * 100, 100);
 
-  const getCategoryGradient = (category: string): readonly [string, string] => {
-    switch (category) {
-      case 'fitness':
-        return ['#FF6B6B', '#FF8E8E'] as const;
-      case 'work':
-        return ['#4ECDC4', '#44A08D'] as const;
-      case 'personal':
-        return ['#A8E6CF', '#7FCDCD'] as const;
-      case 'mindfulness':
-        return ['#FFD93D', '#FF6B6B'] as const;
-      case 'learning':
-        return ['#6C5CE7', '#A29BFE'] as const;
-      default:
-        return ['#5D87FF', '#7B9CFF'] as const;
-    }
+  const getGoalGradient = (color: string): readonly [string, string] => {
+    // Create a gradient by lightening the base color
+    const baseColor = color || '#5D87FF';
+    // For simplicity, we'll use the same color with slight variation
+    return [baseColor, baseColor] as const;
   };
 
   return (
     <TouchableOpacity onPress={onPress} style={styles.goalCard}>
       <LinearGradient
-        colors={getCategoryGradient(goal.category)}
+        colors={getGoalGradient(goal.goal_color)}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.goalCardGradient}
@@ -187,22 +167,29 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress }) => {
         <View style={styles.goalCardContent}>
           <View style={styles.goalHeader}>
             <View style={styles.goalTitleContainer}>
-              <Ionicons name={goal.icon as any} size={24} color="#fff" />
+              <Ionicons name={goal.goal_icon as any} size={24} color="#fff" />
               <View style={styles.goalTitleText}>
-                <Text style={styles.goalTitle}>{goal.title}</Text>
-                <Text style={styles.goalPeriod}>{goal.period}</Text>
+                <Text style={styles.goalTitle}>{goal.goal_name}</Text>
+                <View style={styles.goalMetaContainer}>
+                  <Text style={styles.goalPeriod}>{goal.goal_type}</Text>
+                  {goal.goal_end_date && (
+                    <Text style={styles.goalEndDate}>
+                      • Ends {new Date(goal.goal_end_date).toLocaleDateString()}
+                    </Text>
+                  )}
+                </View>
               </View>
             </View>
             <SimpleProgressCircle
               progress={progress}
               size={60}
               color="#fff"
-              current={goal.currentCount}
-              target={goal.targetCount}
+              current={goal.goal_progress}
+              target={goal.goal_target}
             />
           </View>
           
-          <Text style={styles.goalDescription}>{goal.description}</Text>
+          <Text style={styles.goalDescription}>{goal.goal_description}</Text>
           
           <View style={styles.goalFooter}>
             <View style={styles.progressContainer}>
@@ -214,9 +201,16 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress }) => {
                   ]} 
                 />
               </View>
-              <Text style={styles.progressText}>
-                {goal.currentCount} / {goal.targetCount} completed
-              </Text>
+              <View style={styles.footerRow}>
+                <Text style={styles.progressText}>
+                  {goal.goal_progress} / {goal.goal_target} completed
+                </Text>
+                {goal.goal_progress < goal.goal_target && (
+                  <TouchableOpacity style={styles.incrementButton} onPress={onIncrement}>
+                    <Ionicons name="add" size={16} color="#fff" />
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -247,70 +241,69 @@ const Header: React.FC = () => {
 
 // Main Goals Screen Component
 const GoalsScreen: React.FC = () => {
-  const [goals, setGoals] = useState<Goal[]>([
-    {
-      id: '1',
-      title: 'Workout Routine',
-      description: 'Complete gym sessions to stay mindfulnessy',
-      targetCount: 3,
-      currentCount: 1,
-      period: 'weekly',
-      category: 'fitness',
-      color: '#FF6B6B',
-      icon: 'fitness-outline',
-      createdAt: '2025-08-01',
-    },
-    {
-      id: '2',
-      title: 'Learning Goals',
-      description: 'Complete online courses and tutorials',
-      targetCount: 5,
-      currentCount: 3,
-      period: 'weekly',
-      category: 'learning',
-      color: '#6C5CE7',
-      icon: 'book-outline',
-      createdAt: '2025-08-01',
-    },
-    {
-      id: '3',
-      title: 'Project Tasks',
-      description: 'Finish important work projects',
-      targetCount: 10,
-      currentCount: 7,
-      period: 'weekly',
-      category: 'work',
-      color: '#4ECDC4',
-      icon: 'briefcase-outline',
-      createdAt: '2025-08-01',
-    },
-    {
-      id: '4',
-      title: 'Daily Meditation',
-      description: 'Practice mindfulness and relaxation',
-      targetCount: 1,
-      currentCount: 0,
-      period: 'daily',
-      category: 'mindfulness',
-      color: '#FFD93D',
-      icon: 'flower-outline',
-      createdAt: '2025-08-01',
-    },
-  ]);
-
+  const { 
+    goals, 
+    goalLoading, 
+    goalError, 
+    refreshGoals, 
+    incrementGoalProgress,
+    addGoal
+  } = useApi();
+  
   const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [showAddGoalModal, setShowAddGoalModal] = useState(false);
 
-  const filteredGoals = goals.filter(goal => goal.period === selectedPeriod);
+  // Load goals on component mount
+  useEffect(() => {
+    refreshGoals();
+  }, [refreshGoals]);
+
+  const filteredGoals = goals.filter((goal: Goal) => {
+    // Filter by goal type
+    if (goal.goal_type !== selectedPeriod) return false;
+    
+    // Filter by date range - only show active goals
+    const now = new Date();
+    const startDate = new Date(goal.goal_start_date);
+    const endDate = goal.goal_end_date ? new Date(goal.goal_end_date) : null;
+    
+    // Goal must have started
+    if (startDate > now) return false;
+    
+    // If goal has end date, it must not have ended
+    if (endDate && endDate < now) return false;
+    
+    return true;
+  });
 
   const handleGoalPress = (goal: Goal) => {
-    console.log('Goal pressed:', goal.title);
+    console.log('Goal pressed:', goal.goal_name);
     // Navigate to goal details or edit screen
+  };
+
+  const handleIncrementGoal = async (goalId: string) => {
+    try {
+      await incrementGoalProgress(goalId, 1);
+      Alert.alert('Success', 'Goal progress updated!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update goal progress');
+    }
+  };
+
+  const handleAddGoal = async (goalData: BaseGoal) => {
+    try {
+      await addGoal(goalData);
+      Alert.alert('Success', 'Goal created successfully!');
+      setShowAddGoalModal(false);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to create goal');
+    }
   };
 
   const calculateOverallProgress = () => {
     if (filteredGoals.length === 0) return 0;
-    const totalProgress = filteredGoals.reduce((sum, goal) => {
-      return sum + (goal.currentCount / goal.targetCount);
+    const totalProgress = filteredGoals.reduce((sum: number, goal: Goal) => {
+      return sum + (goal.goal_progress / goal.goal_target);
     }, 0);
     return totalProgress / filteredGoals.length;
   };
@@ -322,29 +315,47 @@ const GoalsScreen: React.FC = () => {
       <Header />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Error State */}
+        {goalError && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{goalError}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={refreshGoals}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Overview Section */}
         <View style={styles.overviewCard}>
-          <Text style={styles.overviewTitle}>This Week's Progress</Text>
-          <View style={styles.overviewStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{filteredGoals.length}</Text>
-              <Text style={styles.statLabel}>Active Goals</Text>
+          <Text style={styles.overviewTitle}>
+            {selectedPeriod.charAt(0).toUpperCase() + selectedPeriod.slice(1)} Progress
+          </Text>
+          {goalLoading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading goals...</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {Math.round(calculateOverallProgress() * 100)}%
-              </Text>
-              <Text style={styles.statLabel}>Completed</Text>
+          ) : (
+            <View style={styles.overviewStats}>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{filteredGoals.length}</Text>
+                <Text style={styles.statLabel}>Active Goals</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>
+                  {Math.round(calculateOverallProgress() * 100)}%
+                </Text>
+                <Text style={styles.statLabel}>Completed</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>
+                  {filteredGoals.filter((goal: Goal) => goal.goal_progress >= goal.goal_target).length}
+                </Text>
+                <Text style={styles.statLabel}>Achieved</Text>
+              </View>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {filteredGoals.filter(goal => goal.currentCount >= goal.targetCount).length}
-              </Text>
-              <Text style={styles.statLabel}>Achieved</Text>
-            </View>
-          </View>
+          )}
         </View>
 
         {/* Period Filter */}
@@ -370,17 +381,18 @@ const GoalsScreen: React.FC = () => {
 
         {/* Goals List */}
         <View style={styles.goalsContainer}>
-          {filteredGoals.map(goal => (
+          {!goalLoading && filteredGoals.map(goal => (
             <GoalCard
-              key={goal.id}
+              key={goal.goal_id}
               goal={goal}
               onPress={() => handleGoalPress(goal)}
+              onIncrement={() => handleIncrementGoal(goal.goal_id)}
             />
           ))}
         </View>
 
         {/* Empty state */}
-        {filteredGoals.length === 0 && (
+        {filteredGoals.length === 0 && !goalLoading && (
           <View style={styles.emptyState}>
             <Ionicons name="flag-outline" size={48} color="#ccc" />
             <Text style={styles.emptyStateTitle}>No {selectedPeriod} goals yet</Text>
@@ -390,6 +402,21 @@ const GoalsScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setShowAddGoalModal(true)}
+      >
+        <Ionicons name="add" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Add Goal Modal */}
+      <AddGoalModal
+        visible={showAddGoalModal}
+        onClose={() => setShowAddGoalModal(false)}
+        onSave={handleAddGoal}
+      />
     </SafeAreaView>
   );
 };
@@ -543,10 +570,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 2,
   },
+  goalMetaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   goalPeriod: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
     textTransform: 'capitalize',
+  },
+  goalEndDate: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginLeft: 4,
   },
   goalDescription: {
     fontSize: 14,
@@ -575,6 +611,50 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.9)',
   },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  incrementButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#c62828',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  retryButton: {
+    backgroundColor: '#c62828',
+    padding: 8,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
+  },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
@@ -592,6 +672,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 40,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#5D87FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });
 

@@ -22,7 +22,7 @@ interface ListSelectionModalProps {
   onClose: () => void;
   availableLists: List[];
   selectedList: List | null;
-  onSelectList: (list: List) => void;
+  onSelectList: (list: List | null) => void;
   onCreateNewList?: (newList: BaseList) => Promise<List>;
 }
 
@@ -96,6 +96,11 @@ const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
     animateOut(onClose);
   };
 
+  const handleClearList = () => {
+    onSelectList(null);
+    animateOut(onClose);
+  };
+
   const handleCreateNewList = async (newList: BaseList) => {
     try {
       setIsCreating(true);
@@ -126,12 +131,11 @@ const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
       ]}
       onPress={() => handleSelectList(item)}
     >
-      <View
-        style={[
-          styles.listColorIndicator,
-          { backgroundColor: item.list_color },
-        ]}
-      />
+      <View style={styles.listIconContainer}>
+        <Text style={styles.emojiIcon}>
+          {item.list_icon}
+        </Text>
+      </View>
       <Text style={styles.listItemText}>{item.list_name}</Text>
       {selectedList?.list_id === item.list_id && (
         <Ionicons name="checkmark" size={20} color="#5D87FF" />
@@ -172,6 +176,15 @@ const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
             style={styles.listContainer}
             contentContainerStyle={styles.listContent}
           />
+
+          {/* No List Button */}
+          <TouchableOpacity
+            style={styles.clearListButton}
+            onPress={handleClearList}
+          >
+            <Ionicons name="close-circle-outline" size={22} color="#FF6B6B" />
+            <Text style={styles.clearListText}>No List</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.createNewListButton}
@@ -244,16 +257,35 @@ const styles = StyleSheet.create({
   selectedListItem: {
     backgroundColor: "#f8f9fe",
   },
-  listColorIndicator: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    marginRight: 12,
+  listIconContainer: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8, // spacing between icon and text
+  },
+
+  emojiIcon: {
+    fontSize: 18,
+    textAlign: 'center',
   },
   listItemText: {
     flex: 1,
     fontSize: 16,
     color: "#333",
+  },
+  clearListButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  clearListText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: "#FF6B6B",
+    fontWeight: "500",
   },
   createNewListButton: {
     flexDirection: "row",

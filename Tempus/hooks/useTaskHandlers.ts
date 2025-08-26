@@ -35,6 +35,7 @@ export const useTaskHandlers = (onTaskChange?: () => void) => {
       const updateData = {
         task_id: task.task_id,
         is_completed: isCompleted,
+        task_goal_id: task.task_goal_id,
         task_completed_date: isCompleted ? new Date().toISOString() : undefined
       };
       

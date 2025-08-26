@@ -200,6 +200,7 @@ const ListsScreen: React.FC = () => {
       const updateData: UpdateTaskInput = {
         task_id: task.task_id,
         is_completed: isCompleted,
+        task_goal_id: task.task_goal_id,
         is_task: true, // Set to true as required by the API
       };
 

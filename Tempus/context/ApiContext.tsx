@@ -9,6 +9,7 @@ import axios, { AxiosResponse } from "axios";
 import { AuthService } from "../services/AuthService";
 import { BaseTask, Task, UpdateTaskInput } from "../types/tasks";
 import { BaseList, List } from "../types/lists";
+import { BaseGoal, Goal, UpdateGoalInput } from "../types/goals";
 
 const apiBase = "https://b1s33elek9.execute-api.us-east-1.amazonaws.com";
 
@@ -35,6 +36,9 @@ interface ApiContextType {
   getTasksByListId: (
     listId: number
   ) => Promise<{ message: string; tasksArr: Task[] }>;
+  getTasksByGoalId: (
+    goalId: string
+  ) => Promise<{ message: string; tasksArr: Task[] }>;
 
   // Lists
   lists: List[];
@@ -43,9 +47,21 @@ interface ApiContextType {
   addList: (listData: BaseList) => Promise<AxiosResponse<any>>;
   getLists: () => Promise<{ message: string; listsArr: List[] }>;
 
+  // Goals
+  goals: Goal[];
+  goalLoading: boolean;
+  goalError: string | null;
+  addGoal: (goalData: BaseGoal) => Promise<AxiosResponse<any>>;
+  updateGoal: (updatedData: UpdateGoalInput) => Promise<AxiosResponse<any>>;
+  deleteGoal: (goalId: string) => Promise<AxiosResponse<any>>;
+  getGoals: () => Promise<{ message: string; goalsArr: Goal[] }>;
+  getGoalsByType: (goal_type: 'daily' | 'weekly' | 'monthly') => Promise<{ message: string; goalsArr: Goal[] }>;
+  incrementGoalProgress: (goalId: string, increment?: number) => Promise<AxiosResponse<any>>;
+
   // Refresh functions to update state
   refreshTasks: (month?: number, year?: number) => Promise<void>;
   refreshLists: () => Promise<void>;
+  refreshGoals: () => Promise<void>;
 }
 
 // Create the context with a default value
@@ -83,6 +99,11 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
   const [listLoading, setListLoading] = useState<boolean>(false);
   const [listError, setListError] = useState<string | null>(null);
 
+  // State for goals
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalLoading, setGoalLoading] = useState<boolean>(false);
+  const [goalError, setGoalError] = useState<string | null>(null);
+
   // Function to refresh tasks
   const refreshTasks = useCallback(async (month?: number, year?: number) => {
     setTaskLoading(true);
@@ -118,6 +139,22 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
       console.error("Error refreshing lists:", error);
     } finally {
       setListLoading(false);
+    }
+  }, []);
+
+  // Function to refresh goals
+  const refreshGoals = useCallback(async () => {
+    setGoalLoading(true);
+    setGoalError(null);
+
+    try {
+      const response = await getGoalsImpl();
+      setGoals(response.goalsArr);
+    } catch (error: any) {
+      setGoalError(error.message || "Error fetching goals");
+      console.error("Error refreshing goals:", error);
+    } finally {
+      setGoalLoading(false);
     }
   }, []);
 
@@ -261,6 +298,28 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     }
   };
 
+  // New function to get tasks by goal ID
+  const getTasksByGoalIdImpl = async (
+    goalId: string
+  ): Promise<{ message: string; tasksArr: Task[] }> => {
+    const headers = await getAuthHeaders();
+    try {
+      const { data } = await axios.get<{ message: string; tasksArr: Task[] }>(
+        `${apiBase}/tasks/goal/${goalId}`,
+        { headers }
+      );
+      return data;
+    } catch (error: any) {
+      console.error(
+        "Failed to fetch tasks by goal ID:",
+        error.response?.data || error.message
+      );
+      throw new Error(
+        error.response?.data?.message || "Failed to fetch tasks by goal ID"
+      );
+    }
+  };
+
   // Lists
   const addListImpl = async (
     listData: BaseList
@@ -302,6 +361,126 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     }
   };
 
+  // Goals
+  const addGoalImpl = async (
+    goalData: BaseGoal
+  ): Promise<AxiosResponse<any>> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await axios.post(`${apiBase}/goal`, goalData, { headers });
+      // After adding a goal, refresh the goal list
+      await refreshGoals();
+      console.log("Goal added successfully");
+      return response;
+    } catch (error: any) {
+      console.error("Error adding goal:", error);
+      throw new Error(error.response?.data?.message || "Failed to add goal");
+    }
+  };
+
+  const updateGoalImpl = async (
+    updatedData: UpdateGoalInput
+  ): Promise<AxiosResponse<any>> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await axios.patch(
+        `${apiBase}/goal/${updatedData.goal_id}`,
+        updatedData,
+        { headers }
+      );
+      // After updating a goal, refresh the goal list
+      await refreshGoals();
+      return response;
+    } catch (error: any) {
+      console.error(
+        "Failed to update goal:",
+        error.response?.data || error.message
+      );
+      throw new Error(error.response?.data?.message || "Failed to update goal");
+    }
+  };
+
+  const deleteGoalImpl = async (
+    goalId: string
+  ): Promise<AxiosResponse<any>> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await axios.delete(`${apiBase}/goal/${goalId}`, {
+        headers,
+      });
+      // After deleting a goal, refresh the goal list
+      await refreshGoals();
+      return response;
+    } catch (error: any) {
+      console.error("Error deleting goal:", error);
+      throw new Error(error.response?.data?.message || "Failed to delete goal");
+    }
+  };
+
+  const getGoalsImpl = async (): Promise<{
+    message: string;
+    goalsArr: Goal[];
+  }> => {
+    const headers = await getAuthHeaders();
+    try {
+      const { data } = await axios.get<{ message: string; goalsArr: Goal[] }>(
+        `${apiBase}/goals`,
+        { headers }
+      );
+      return data;
+    } catch (error: any) {
+      console.error(
+        "Failed to fetch goals:",
+        error.response?.data || error.message
+      );
+      throw new Error(error.response?.data?.message || "Failed to fetch goals");
+    }
+  };
+
+  const getGoalsByTypeImpl = async (
+    goal_type: 'daily' | 'weekly' | 'monthly'
+  ): Promise<{ message: string; goalsArr: Goal[] }> => {
+    const headers = await getAuthHeaders();
+    try {
+      const { data } = await axios.get<{ message: string; goalsArr: Goal[] }>(
+        `${apiBase}/goals/type/${goal_type}`,
+        { headers }
+      );
+      return data;
+    } catch (error: any) {
+      console.error(
+        "Failed to fetch goals by type:",
+        error.response?.data || error.message
+      );
+      throw new Error(
+        error.response?.data?.message || "Failed to fetch goals by type"
+      );
+    }
+  };
+
+  const incrementGoalProgressImpl = async (
+    goalId: string,
+    increment: number = 1
+  ): Promise<AxiosResponse<any>> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await axios.patch(
+        `${apiBase}/goal/${goalId}/increment`,
+        { increment },
+        { headers }
+      );
+      // After updating goal progress, refresh the goal list
+      await refreshGoals();
+      return response;
+    } catch (error: any) {
+      console.error(
+        "Failed to increment goal progress:",
+        error.response?.data || error.message
+      );
+      throw new Error(error.response?.data?.message || "Failed to increment goal progress");
+    }
+  };
+
   // Provide context value
   const contextValue: ApiContextType = {
     // Tasks
@@ -316,6 +495,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     getTasksByMonth: getTasksByMonthImpl,
     getTasksByYear: getTasksByYearImpl,
     getTasksByListId: getTasksByListIdImpl,
+    getTasksByGoalId: getTasksByGoalIdImpl,
 
     // Lists
     lists,
@@ -324,9 +504,21 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     addList: addListImpl,
     getLists: getListsImpl,
 
+    // Goals
+    goals,
+    goalLoading,
+    goalError,
+    addGoal: addGoalImpl,
+    updateGoal: updateGoalImpl,
+    deleteGoal: deleteGoalImpl,
+    getGoals: getGoalsImpl,
+    getGoalsByType: getGoalsByTypeImpl,
+    incrementGoalProgress: incrementGoalProgressImpl,
+
     // Refresh functions
     refreshTasks,
     refreshLists,
+    refreshGoals,
   };
 
   return (

@@ -18,8 +18,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import ListSelectionModal from "./ListSelectionModal";
+import GoalSelectionModal from "./GoalSelectionModal";
 import { BaseTask } from "@/types/tasks";
 import { List } from "@/types/lists";
+import { Goal } from "@/types/goals";
 import { useApi } from "@/context/ApiContext";
 import { BaseList } from "@/types/lists";
 const { height } = Dimensions.get("window");
@@ -30,6 +32,7 @@ interface AddTaskBottomSheetProps {
   onSave?: (task: BaseTask) => Promise<void>; // Optional as we'll use the context by default
   selectedDate?: Date;
   selectedList?: List | null;
+  selectedGoal?: Goal | null;
 }
 
 const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
@@ -38,9 +41,10 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
   onSave,
   selectedDate,
   selectedList: initialSelectedList,
+  selectedGoal: initialSelectedGoal,
 }) => {
   // Use the API context
-  const { lists, addTask: contextAddTask, taskLoading, addList } = useApi();
+  const { lists, goals, addTask: contextAddTask, taskLoading, addList } = useApi();
 
   // Animation values
   const translateY = useRef(new Animated.Value(height)).current;
@@ -87,6 +91,10 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
   const [selectedList, setSelectedList] = useState<List | null>(initialSelectedList || null);
   const [showListModal, setShowListModal] = useState(false);
 
+  // Goal selection states
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(initialSelectedGoal || null);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+
   // UI States
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState<"date" | "time">("date");
@@ -118,15 +126,14 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
       setStartDate(initializeDate());
       setEndDate(initializeEndDate());
 
-      // Only set selectedList if lists has items and selectedList is null
-      if (lists.length > 0 && !selectedList) {
-        setSelectedList(lists[0]);
-      }
+      // Reset list and goal selection
+      setSelectedList(initialSelectedList || null);
+      setSelectedGoal(initialSelectedGoal || null);
 
       // Animate in
       animateIn();
     }
-  }, [visible, selectedDate, lists]); 
+  }, [visible, selectedDate, lists]);
 
   // Animation functions
   const animateIn = () => {
@@ -370,17 +377,17 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
   // Create a new list
   const handleCreateNewList = async (newListData: BaseList) => {
     if (!newListData) throw new Error("List data is required");
-    
+
     try {
       // Use the addList function from API context
       const response = await addList(newListData);
-      
+
       // Get the created list data
       const newList = response.data;
       console.log("New list created:", newList);
       // Update the selected list
       setSelectedList(newList);
-      
+
       return newList;
     } catch (error) {
       console.error("Failed to create new list:", error);
@@ -421,6 +428,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
         task_priority: priority,
         task_energy_level: energyLevel,
         task_list_id: selectedList?.list_id ? Number(selectedList.list_id) : undefined,
+        task_goal_id: selectedGoal?.goal_id || undefined,
         is_task: taskType === "task",
       };
 
@@ -524,7 +532,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                       styles.taskTypeButton,
                       taskType === type && styles.taskTypeButtonSelected,
                     ]}
-                    onPress={() => setTaskType(type as "event" | "task" )}
+                    onPress={() => setTaskType(type as "event" | "task")}
                   >
                     <Text
                       style={[
@@ -568,18 +576,44 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                   <Text style={styles.optionLabel}>List</Text>
                   {selectedList ? (
                     <View style={styles.selectedListContainer}>
-                      <View
-                        style={[
-                          styles.listColorIndicator,
-                          { backgroundColor: selectedList.list_color },
-                        ]}
-                      />
+                      <View style={styles.listIconContainer}>
+                        <Text style={styles.emojiIcon}>
+                          {selectedList.list_icon}
+                        </Text>
+                      </View>
                       <Text style={styles.optionValue}>
                         {selectedList.list_name}
                       </Text>
                     </View>
                   ) : (
-                    <Text style={styles.optionValue}>Select a list</Text>
+                    <Text style={styles.optionValue}>Select a list (optional)</Text>
+                  )}
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
+              </TouchableOpacity>
+
+              {/* Goal Selection */}
+              <TouchableOpacity
+                style={styles.optionRow}
+                onPress={() => setShowGoalModal(true)}
+              >
+                <Ionicons name="flag" size={22} color="#5D87FF" />
+                <View style={styles.optionTextContainer}>
+                  <Text style={styles.optionLabel}>Goal</Text>
+                  {selectedGoal ? (
+                    <View style={styles.selectedGoalContainer}>
+                      <View style={[styles.goalIconContainer, { backgroundColor: selectedGoal.goal_color }]}>
+                        <Ionicons name={selectedGoal.goal_icon as any} size={16} color="#fff" />
+                      </View>
+                      <Text style={styles.optionValue}>
+                        {selectedGoal.goal_name}
+                      </Text>
+                      <Text style={styles.goalPeriodBadge}>
+                        {selectedGoal.goal_type}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.optionValue}>Select a goal (optional)</Text>
                   )}
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
@@ -742,7 +776,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                             style={[
                               styles.priorityButtonText,
                               priority === 1 &&
-                                styles.priorityButtonTextSelected,
+                              styles.priorityButtonTextSelected,
                             ]}
                           >
                             Low
@@ -763,7 +797,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                             style={[
                               styles.priorityButtonText,
                               priority === 2 &&
-                                styles.priorityButtonTextSelected,
+                              styles.priorityButtonTextSelected,
                             ]}
                           >
                             Medium
@@ -784,7 +818,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                             style={[
                               styles.priorityButtonText,
                               priority === 3 &&
-                                styles.priorityButtonTextSelected,
+                              styles.priorityButtonTextSelected,
                             ]}
                           >
                             High
@@ -824,7 +858,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                                   style={[
                                     styles.energyMarkerDot,
                                     energyLevel >= marker &&
-                                      styles.energyMarkerDotActive,
+                                    styles.energyMarkerDotActive,
                                   ]}
                                 />
                                 <Text style={styles.energyMarkerText}>
@@ -907,6 +941,15 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
           selectedList={selectedList}
           onSelectList={setSelectedList}
           onCreateNewList={handleCreateNewList}
+        />
+
+        {/* Goal Selection Modal */}
+        <GoalSelectionModal
+          visible={showGoalModal}
+          onClose={() => setShowGoalModal(false)}
+          availableGoals={goals}
+          selectedGoal={selectedGoal}
+          onSelectGoal={setSelectedGoal}
         />
       </View>
     </Modal>
@@ -1083,11 +1126,39 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 4,
   },
-  listColorIndicator: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    marginRight: 12,
+listIconContainer: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8, // spacing between icon and text
+  },
+  emojiIcon: {
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  selectedGoalContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  goalIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  goalPeriodBadge: {
+    fontSize: 11,
+    color: '#666',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 8,
+    textTransform: 'capitalize',
   },
   errorContainer: {
     backgroundColor: "#fff8f8",

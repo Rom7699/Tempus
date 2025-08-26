@@ -43,7 +43,9 @@
           "healthUpdatePermission": "Tempus uses HealthKit to write workout and activity data when you complete fitness-related tasks to help track your progress.",
           "isClinicalDataEnabled": false
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
