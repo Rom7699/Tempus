@@ -215,7 +215,7 @@ const GoalSelectionModal: React.FC<GoalSelectionModalProps> = ({
           <FlatList
             data={filteredGoals}
             renderItem={renderGoalItem}
-            keyExtractor={(item) => item.goal_id}
+            keyExtractor={(item) => item.goal_id.toString()}
             style={styles.goalContainer}
             contentContainerStyle={styles.goalList}
             showsVerticalScrollIndicator={false}

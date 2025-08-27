@@ -3,7 +3,7 @@ export interface BaseTask {
   task_name: string;
   task_description?: string;
   task_list_id?: number;
-  task_goal_id?: string;
+  task_goal_id?: number;
 
   // Timing information
   task_start_date: string; // ISO date format 'YYYY-MM-DD'

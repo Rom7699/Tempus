@@ -32,6 +32,8 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             iconName = "calendar-outline";
           } else if (route.name === "Lists") {
             iconName = "list-outline";
+          } else if (route.name === "Goals") {
+            iconName = "flag-outline";
           } else if (route.name === "AITaskGeneratorScreen") {
             iconName = "sparkles-outline";
           } else if (route.name === "Settings") {
