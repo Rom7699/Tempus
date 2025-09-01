@@ -5,7 +5,7 @@ import React, {
   useCallback,
   ReactNode,
 } from "react";
-import axios, { AxiosResponse } from "axios";
+import axios from "axios";
 import { AuthService } from "../services/AuthService";
 import { BaseTask, Task, UpdateTaskInput } from "../types/tasks";
 import { BaseList, List } from "../types/lists";
@@ -19,10 +19,10 @@ interface ApiContextType {
   tasks: Task[];
   taskLoading: boolean;
   taskError: string | null;
-  addTask: (taskData: BaseTask) => Promise<AxiosResponse<any>>;
-  deleteTask: (taskId: string) => Promise<AxiosResponse<any>>;
-  updateTask: (updatedData: UpdateTaskInput) => Promise<AxiosResponse<any>>;
-  getTaskById: (taskId: string) => Promise<AxiosResponse<Task>>;
+  addTask: (taskData: BaseTask) => Promise<any>;
+  deleteTask: (taskId: string) => Promise<any>;
+  updateTask: (updatedData: UpdateTaskInput) => Promise<any>;
+  getTaskById: (taskId: string) => Promise<any>;
   getTasksByDay: (
     date: string
   ) => Promise<{ message: string; tasksArr: Task[] }>;
@@ -44,25 +44,25 @@ interface ApiContextType {
   lists: List[];
   listLoading: boolean;
   listError: string | null;
-  addList: (listData: BaseList) => Promise<AxiosResponse<any>>;
-  updateList: (listId: string, updateData: Partial<BaseList>) => Promise<AxiosResponse<any>>;
-  deleteList: (listId: string) => Promise<AxiosResponse<any>>;
-  unlinkAllTasksFromList: (listId: string) => Promise<AxiosResponse<any>>;
-  unlinkTasksFromList: (listId: string, taskIds: string[]) => Promise<AxiosResponse<any>>;
+  addList: (listData: BaseList) => Promise<any>;
+  updateList: (listId: string, updateData: Partial<BaseList>) => Promise<any>;
+  deleteList: (listId: string) => Promise<any>;
+  unlinkAllTasksFromList: (listId: string) => Promise<any>;
+  unlinkTasksFromList: (listId: string, taskIds: string[]) => Promise<any>;
   getLists: () => Promise<{ message: string; listsArr: List[] }>;
 
   // Goals
   goals: Goal[];
   goalLoading: boolean;
   goalError: string | null;
-  addGoal: (goalData: BaseGoal) => Promise<AxiosResponse<any>>;
-  updateGoal: (updatedData: UpdateGoalInput) => Promise<AxiosResponse<any>>;
-  deleteGoal: (goalId: number) => Promise<AxiosResponse<any>>;
+  addGoal: (goalData: BaseGoal) => Promise<any>;
+  updateGoal: (updatedData: UpdateGoalInput) => Promise<any>;
+  deleteGoal: (goalId: number) => Promise<any>;
   getGoals: (goal_type?: 'daily' | 'weekly' | 'monthly', is_completed?: boolean) => Promise<{ message: string; goals: Goal[] }>;
   getGoalById: (goalId: number) => Promise<{ message: string; goal: Goal }>;
   getGoalProgress: (goalId: number) => Promise<{ message: string; data: any }>;
-  linkTaskToGoal: (taskId: string, goalId: number) => Promise<AxiosResponse<any>>;
-  unlinkTaskFromGoal: (taskId: string) => Promise<AxiosResponse<any>>;
+  linkTaskToGoal: (taskId: string, goalId: number) => Promise<any>;
+  unlinkTaskFromGoal: (taskId: string) => Promise<any>;
 
   // Refresh functions to update state
   refreshTasks: (month?: number, year?: number) => Promise<void>;
@@ -168,7 +168,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
   // Tasks
   const addTaskImpl = async (
     taskData: BaseTask
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.post(`${apiBase}/task`, taskData, { headers });
@@ -182,7 +182,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
 
   const deleteTaskImpl = async (
     taskId: string
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     const headers = await getAuthHeaders();
     const response = await axios.delete(`${apiBase}/task/${taskId}`, {
       headers,
@@ -192,7 +192,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
 
   const updateTaskImpl = async (
     updatedData: UpdateTaskInput
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.patch(
@@ -214,7 +214,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
 
   const getTaskByIdImpl = async (
     taskId: string
-  ): Promise<AxiosResponse<Task>> => {
+  ): Promise<any> => {
     const headers = await getAuthHeaders();
     return axios.get(`${apiBase}/task/${taskId}`, { headers });
   };
@@ -328,7 +328,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
   // Lists
   const addListImpl = async (
     listData: BaseList
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.post(`${apiBase}/list`, listData, {
@@ -349,7 +349,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
   const updateListImpl = async (
     listId: string,
     updateData: Partial<BaseList>
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.put(`${apiBase}/list/${listId}`, updateData, { headers });
@@ -365,7 +365,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
 
   const deleteListImpl = async (
     listId: string
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.delete(`${apiBase}/list/${listId}`, { headers });
@@ -381,7 +381,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
 
   const unlinkAllTasksFromListImpl = async (
     listId: string
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.post(`${apiBase}/list/${listId}/unlink-all-tasks`, {}, { headers });
@@ -396,7 +396,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
   const unlinkTasksFromListImpl = async (
     listId: string,
     taskIds: string[]
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.post(`${apiBase}/list/${listId}/unlink-tasks`, { taskIds }, { headers });
@@ -431,7 +431,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
   // Goals
   const addGoalImpl = async (
     goalData: BaseGoal
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.post(`${apiBase}/goal`, goalData, { headers });
@@ -447,7 +447,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
 
   const updateGoalImpl = async (
     updatedData: UpdateGoalInput
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.patch(
@@ -469,7 +469,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
 
   const deleteGoalImpl = async (
     goalId: number
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.delete(`${apiBase}/goal/${goalId}`, {
@@ -569,7 +569,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
   const linkTaskToGoalImpl = async (
     taskId: string,
     goalId: number
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.post(
@@ -594,7 +594,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
 
   const unlinkTaskFromGoalImpl = async (
     taskId: string
-  ): Promise<AxiosResponse<any>> => {
+  ): Promise<any> => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.delete(
@@ -666,6 +666,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     <ApiContext.Provider value={contextValue}>{children}</ApiContext.Provider>
   );
 };
+
 
 // Custom hook for using the API context
 export const useApi = (): ApiContextType => {

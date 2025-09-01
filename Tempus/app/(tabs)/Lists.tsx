@@ -12,7 +12,7 @@ import {
   Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useApi } from "@/context/ApiContext";
+import { useApi } from "../../context/ApiContext";
 import { List, BaseList } from "@/types/lists";
 import { Task, BaseTask, UpdateTaskInput } from "@/types/tasks";
 import AddListModal from "@/components/AddListModal";
@@ -113,27 +113,6 @@ const ListsScreen: React.FC = () => {
     console.log("[Lists.tsx] Lists loaded:", lists);
   }, [refreshLists]);
 
-  // Format date for display
-  const formatDateToShort = (dateString: string): string => {
-    const date = new Date(dateString);
-    const day = date.getDate();
-    const monthNames = [
-      "JAN",
-      "FEB",
-      "MAR",
-      "APR",
-      "MAY",
-      "JUN",
-      "JUL",
-      "AUG",
-      "SEP",
-      "OCT",
-      "NOV",
-      "DEC",
-    ];
-    const month = monthNames[date.getMonth()];
-    return `${day} ${month}`;
-  };
 
   // Handle list selection
   const handleListPress = async (list: List) => {

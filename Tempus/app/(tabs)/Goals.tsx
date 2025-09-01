@@ -7,8 +7,6 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Animated,
-  Dimensions,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,29 +19,27 @@ import SimpleProgressCircle from '../../components/SimpleProgressCircle';
 import GoalIncrementModal from '../../components/GoalIncrementModal';
 import { createGradient } from '../../utils/colorUtils';
 
-const { width } = Dimensions.get('window');
 
 interface GoalCardProps {
   goal: Goal;
   onPress: () => void;
-  onIncrement: () => void;
   onShowIncrement?: (goal: Goal) => void;
 }
 
 
 
 // Goal Card Component
-const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onIncrement, onShowIncrement }) => {
+const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) => {
   const progress = goal.goal_target > 0 ? goal.goal_progress / goal.goal_target : 0;
   const progressPercentage = Math.min(progress * 100, 100);
 
-  const getGoalGradient = (color: string): readonly [string, string] => {
+  const getGoalGradient = (color: string): [string, string] => {
     const gradient = createGradient(color || '#5D87FF');
     // If goal is completed, use a slightly muted version
     if (goal.is_completed) {
-      return [gradient[0] + '99', gradient[1] + 'CC'] as const;
+      return [gradient[0] + '99', gradient[1] + 'CC'];
     }
-    return gradient as const;
+    return gradient;
   };
 
   return (
@@ -320,7 +316,6 @@ const GoalsScreen: React.FC = () => {
               key={goal.goal_id.toString()}
               goal={goal}
               onPress={() => handleGoalPress(goal)}
-              onIncrement={() => {}}
               onShowIncrement={handleShowIncrementModal}
             />
           ))}
@@ -338,7 +333,6 @@ const GoalsScreen: React.FC = () => {
                   key={goal.goal_id.toString()}
                   goal={goal}
                   onPress={() => handleGoalPress(goal)}
-                  onIncrement={() => {}} // No increment for completed goals
                   onShowIncrement={handleShowIncrementModal}
                 />
               ))}

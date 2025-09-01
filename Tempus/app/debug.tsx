@@ -60,13 +60,13 @@ export default function DebugScreen() {
 
         <Text style={styles.header}>Protected Screens</Text>
         <View style={styles.buttonContainer}>
-          <Button title="Home" onPress={() => router.push('/(tabs)/home')} />
+          <Button title="Lists" onPress={() => router.push('/(tabs)/Lists')} />
         </View>
         <View style={styles.buttonContainer}>
           <Button title="Calendar" onPress={() => router.push('/(tabs)/Calendar')} />
         </View>
         <View style={styles.buttonContainer}>
-          <Button title="CalendarList" onPress={() => router.push('/(tabs)/CalendarListView')} />
+          <Button title="Goals" onPress={() => router.push('/(tabs)/Goals')} />
         </View>
       </ScrollView>
     </View>

@@ -22,7 +22,7 @@ import GoalSelectionModal from "./GoalSelectionModal";
 import { BaseTask, Task, UpdateTaskInput } from "@/types/tasks";
 import { List } from "@/types/lists";
 import { Goal } from "@/types/goals";
-import { useApi } from "@/context/ApiContext";
+import { useApi } from "../context/ApiContext";
 import { BaseList } from "@/types/lists";
 const { height } = Dimensions.get("window");
 
@@ -48,7 +48,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
   editTask,
 }) => {
   // Use the API context
-  const { lists, goals, addTask: contextAddTask, updateTask: contextUpdateTask, taskLoading, addList } = useApi();
+  const { lists, goals, addTask: contextAddTask, updateTask: contextUpdateTask, addList } = useApi();
 
   // Determine if we're in edit mode
   const isEditMode = !!editTask;
@@ -150,8 +150,8 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
         setEnergyLevel(editTask.task_energy_level || 50);
         
         // Set selected list and goal
-        const taskList = lists.find(list => Number(list.list_id) === editTask.task_list_id);
-        const taskGoal = goals.find(goal => goal.goal_id === editTask.task_goal_id);
+        const taskList = lists.find((list: List) => Number(list.list_id) === editTask.task_list_id);
+        const taskGoal = goals.find((goal: Goal) => goal.goal_id === editTask.task_goal_id);
         setSelectedList(taskList || null);
         setSelectedGoal(taskGoal || null);
       } else {

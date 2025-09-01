@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   SafeAreaView,
   StatusBar,
-  ActivityIndicator,
   Alert,
 } from "react-native";
 import { CalendarList, DateData } from "react-native-calendars";
@@ -14,7 +12,7 @@ import FloatingActionButton from "../../components/AddTaskButton";
 import AddTaskBottomSheet from "../../components/AddTaskBottomSheet";
 import DisplayTaskModal from "@/components/DisplayTaskModal";
 import { CalendarHeader } from "../../components/calendar/CalendarHeader";
-import { useApi } from "@/context/ApiContext";
+import { useApi } from "../../context/ApiContext";
 import { BaseTask, Task, UpdateTaskInput } from "@/types/tasks";
 import { TaskSection } from "../../components/calendar/TaskSection";
 
@@ -34,27 +32,6 @@ const monthNames: string[] = [
   "December",
 ];
 
-// Format date for section titles
-function formatDateToShort(dateString: string): string {
-  const date = new Date(dateString);
-  const day = date.getDate();
-  const monthNames: string[] = [
-    "JAN",
-    "FEB",
-    "MAR",
-    "APR",
-    "MAY",
-    "JUN",
-    "JUL",
-    "AUG",
-    "SEP",
-    "OCT",
-    "NOV",
-    "DEC",
-  ];
-  const month = monthNames[date.getMonth()];
-  return `${day} ${month}`;
-}
 
 // Main Calendar Screen component
 const CalendarScreen: React.FC = () => {
@@ -165,7 +142,7 @@ const CalendarScreen: React.FC = () => {
     console.log("Generating marked dates for tasks:", tasks.length);
     const markedDates: { [date: string]: any } = {};
 
-    tasks.forEach((task) => {
+    tasks.forEach((task: Task) => {
       const dateKey = task.task_start_date?.split("T")[0];
       if (dateKey) {
         markedDates[dateKey] = {
@@ -207,7 +184,7 @@ const CalendarScreen: React.FC = () => {
   };
 
   // Filter tasks for the selected date
-  const tasksForSelectedDate = tasks.filter((task) => {
+  const tasksForSelectedDate = tasks.filter((task: Task) => {
     const taskDate = task.task_start_date?.split("T")[0];
     const normalizedSelectedDate = selectedDate.split("T")[0];
     return taskDate === normalizedSelectedDate;

@@ -163,7 +163,7 @@ const UnlinkTasksModal: React.FC<UnlinkTasksModalProps> = ({
           <View style={styles.taskMeta}>
             <View style={styles.taskDate}>
               <Text style={styles.taskDateText}>
-                {formatNiceDateTime(item.task_start_date, item.task_start_time)}
+                {item.task_start_date ? formatNiceDateTime(item.task_start_date, item.task_start_time) : 'No date/time set'}
               </Text>
             </View>
             

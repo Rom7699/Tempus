@@ -1,10 +1,10 @@
 // hooks/useTaskHandlers.ts
 import { useState } from 'react';
-import { useApi } from '@/context/ApiContext';
+import { useApi } from '../context/ApiContext';
 import { Task, BaseTask } from '@/types/tasks';
 
 export const useTaskHandlers = (onTaskChange?: () => void) => {
-  const { addTask, deleteTask, updateTask, refreshTasks } = useApi();
+  const { addTask, deleteTask, updateTask } = useApi();
   
   const [taskModalVisible, setTaskModalVisible] = useState<boolean>(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);

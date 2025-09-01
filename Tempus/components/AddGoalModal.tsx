@@ -10,7 +10,6 @@ import {
   Animated,
   TouchableWithoutFeedback,
   Dimensions,
-  Alert,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -194,7 +193,7 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
         goal_color: goalColor,
         goal_icon: goalIcon,
         goal_start_date: goalStartDate.toISOString().split('T')[0],
-        goal_target_days: goalTargetDays === 'custom' ? parseInt(customTargetDays) : (goalTargetDays === 'forever' ? null : goalTargetDays),
+        goal_target_days: goalTargetDays === 'custom' ? parseInt(customTargetDays) : (goalTargetDays === 'forever' ? undefined : goalTargetDays),
         goal_selected_days: goalType === 'daily' ? selectedDays : undefined,
       };
 
