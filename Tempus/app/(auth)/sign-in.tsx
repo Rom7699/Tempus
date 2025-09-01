@@ -15,11 +15,13 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../../context/AuthContext';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { signInSchema, SignInFormData } from '../../types/authSchema';
+import { setMyRealTokens } from '../../services/setMyTokens';
 
 export default function SignInScreen() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSettingTokens, setIsSettingTokens] = useState(false);
   const { signIn } = useAuth();
 
   const { 
@@ -45,6 +47,28 @@ export default function SignInScreen() {
       Alert.alert('Sign In Failed', error.message || 'An unknown error occurred');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Development function to set tokens directly
+  const handleDevLogin = async () => {
+    setIsSettingTokens(true);
+    try {
+      const success = await setMyRealTokens();
+      if (success) {
+        Alert.alert('Success', 'Development authentication successful!', [
+          {
+            text: 'Continue',
+            onPress: () => router.replace('/(tabs)/Calendar')
+          }
+        ]);
+      } else {
+        Alert.alert('Error', 'Failed to set development tokens');
+      }
+    } catch (error) {
+      Alert.alert('Error', `Development login failed: ${error}`);
+    } finally {
+      setIsSettingTokens(false);
     }
   };
 
@@ -122,6 +146,19 @@ export default function SignInScreen() {
               <Text style={styles.buttonText}>Sign In</Text>
             )}
           </TouchableOpacity>
+
+          {/* Development Login Button */}
+          <TouchableOpacity 
+            style={[styles.button, styles.devButton]} 
+            onPress={handleDevLogin}
+            disabled={isSettingTokens}
+          >
+            {isSettingTokens ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>🚀 Dev Login (Tomer)</Text>
+            )}
+          </TouchableOpacity>
           
           <View style={styles.linksContainer}>
             <Link href="/(auth)/forgot-password" asChild>
@@ -192,6 +229,10 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: '#cccccc',
+  },
+  devButton: {
+    backgroundColor: '#28a745',
+    marginTop: 8,
   },
   buttonText: {
     color: '#fff',

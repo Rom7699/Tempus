@@ -10,9 +10,9 @@ interface TaskDetailItemProps {
 
 const getPriorityColor = (priority: number): string => {
   switch (priority) {
-    case 1: return "#FF5722"; // High priority - Orange/Red
+    case 1: return "#4CAF50"; // Low priority - Green
     case 2: return "#FFC107"; // Medium priority - Yellow/Amber
-    case 3: return "#4CAF50"; // Low priority - Green
+    case 3: return "#FF5722"; // High priority - Orange/Red
     default: return "#888";   // Default - Gray
   }
 };
@@ -45,15 +45,14 @@ const formatNiceDateTime = (date: string, time?: string): string => {
   
   // Add time if provided
   if (time) {
-    // Format from "HH:mm:ss" to "h:mm AM/PM"
+    // Format from "HH:mm:ss" to "HH:mm" (24-hour format)
     const [hours, minutes] = time.split(':');
     const hour = parseInt(hours, 10);
     const minute = parseInt(minutes, 10);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const formattedHour = hour % 12 || 12;
+    const formattedHour = hour.toString().padStart(2, '0');
     const formattedMinute = minute.toString().padStart(2, '0');
     
-    return `${dateStr}, ${formattedHour}:${formattedMinute} ${ampm}`;
+    return `${dateStr}, ${formattedHour}:${formattedMinute}`;
   }
   
   return dateStr;
@@ -74,16 +73,16 @@ const TaskDetailItem: React.FC<TaskDetailItemProps> = ({ task, onPress }) => {
         <View style={styles.taskTitleRow}>
           <Text style={styles.taskTitle}>{task.task_name}</Text>
           <View style={styles.badgesContainer}>
-            {/* Display badge based on is_task value */}
-            {task.is_task ? (
-              <View style={styles.eventBadge}>
-                <Ionicons name="checkbox-outline" size={12} color="#5D87FF" />
-                <Text style={styles.eventBadgeText}>Task</Text>
-              </View>
-            ) : (
+            {/* Display badge based on is_event value */}
+            {task.is_event ? (
               <View style={styles.taskBadge}>
                 <Ionicons name="calendar" size={12} color="#4CAF50" />
                 <Text style={styles.taskBadgeText}>Event</Text>
+              </View>
+            ) : (
+              <View style={styles.eventBadge}>
+                <Ionicons name="checkbox-outline" size={12} color="#5D87FF" />
+                <Text style={styles.eventBadgeText}>Task</Text>
               </View>
             )}
 

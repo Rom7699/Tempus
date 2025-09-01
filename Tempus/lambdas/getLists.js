@@ -1,7 +1,9 @@
-const { pool } = require('/opt/db'); // Reuse your DB connection layer
+const { getPool } = require('/opt/nodejs/db'); // Reuse your DB connection layer
 
 exports.handler = async (event) => {
   try {
+    const pool = getPool();
+    
     const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
     if (!userId) {
       return {

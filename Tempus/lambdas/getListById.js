@@ -1,7 +1,9 @@
-const { pool } = require('/opt/db');
+const { getPool } = require('/opt/nodejs/db');
 
 exports.handler = async (event) => {
   try {
+    const pool = getPool();
+    
     const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
     const listId = event.pathParameters?.listId;
 

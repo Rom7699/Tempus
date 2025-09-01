@@ -1,7 +1,9 @@
-const { pool } = require('/opt/db'); // assumes db.js layer is in /opt
+const { getPool } = require('/opt/nodejs/db'); // assumes db.js layer is in /opt
 
 exports.handler = async (event) => {
   try {
+    const pool = getPool();
+    
     // Extract user ID from Cognito JWT claims
     const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
     const date = event.pathParameters?.date;

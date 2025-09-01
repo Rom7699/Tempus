@@ -45,6 +45,9 @@ interface ApiContextType {
   listLoading: boolean;
   listError: string | null;
   addList: (listData: BaseList) => Promise<AxiosResponse<any>>;
+  updateList: (listId: string, updateData: Partial<BaseList>) => Promise<AxiosResponse<any>>;
+  deleteList: (listId: string) => Promise<AxiosResponse<any>>;
+  unlinkAllTasksFromList: (listId: string) => Promise<AxiosResponse<any>>;
   getLists: () => Promise<{ message: string; listsArr: List[] }>;
 
   // Goals
@@ -168,7 +171,6 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     try {
       const headers = await getAuthHeaders();
       const response = await axios.post(`${apiBase}/task`, taskData, { headers });
-      // After adding a task, refresh the task list
       console.log("Task added successfully");
       return response;
     } catch (error: any) {
@@ -343,6 +345,53 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     }
   };
 
+  const updateListImpl = async (
+    listId: string,
+    updateData: Partial<BaseList>
+  ): Promise<AxiosResponse<any>> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await axios.put(`${apiBase}/list/${listId}`, updateData, { headers });
+      console.log("List updated successfully");
+      // After updating a list, refresh the list
+      await refreshLists();
+      return response;
+    } catch (error: any) {
+      console.error("Error updating list:", error);
+      throw new Error(error.response?.data?.message || "Failed to update list");
+    }
+  };
+
+  const deleteListImpl = async (
+    listId: string
+  ): Promise<AxiosResponse<any>> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await axios.delete(`${apiBase}/list/${listId}`, { headers });
+      console.log("List deleted successfully");
+      // After deleting a list, refresh the list
+      await refreshLists();
+      return response;
+    } catch (error: any) {
+      console.error("Error deleting list:", error);
+      throw new Error(error.response?.data?.message || "Failed to delete list");
+    }
+  };
+
+  const unlinkAllTasksFromListImpl = async (
+    listId: string
+  ): Promise<AxiosResponse<any>> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await axios.post(`${apiBase}/list/${listId}/unlink-all-tasks`, {}, { headers });
+      console.log("All tasks unlinked from list successfully");
+      return response;
+    } catch (error: any) {
+      console.error("Error unlinking tasks from list:", error);
+      throw new Error(error.response?.data?.message || "Failed to unlink tasks from list");
+    }
+  };
+
   const getListsImpl = async (): Promise<{
     message: string;
     listsArr: List[];
@@ -456,13 +505,20 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     goalId: number
   ): Promise<{ message: string; goal: Goal }> => {
     const headers = await getAuthHeaders();
+    const url = `${apiBase}/goal/${goalId}`;
+    
     try {
       const { data } = await axios.get<{ message: string; goal: Goal }>(
-        `${apiBase}/goal/${goalId}`,
+        url,
         { headers }
       );
+      console.log("getGoalById - Success response:", data);
       return data;
     } catch (error: any) {
+      console.error("getGoalById - Full error object:", error);
+      console.error("getGoalById - Error response:", error.response);
+      console.error("getGoalById - Error status:", error.response?.status);
+      console.error("getGoalById - Error data:", error.response?.data);
       console.error(
         "Failed to fetch goal by ID:",
         error.response?.data || error.message
@@ -565,6 +621,9 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     listLoading,
     listError,
     addList: addListImpl,
+    updateList: updateListImpl,
+    deleteList: deleteListImpl,
+    unlinkAllTasksFromList: unlinkAllTasksFromListImpl,
     getLists: getListsImpl,
 
     // Goals

@@ -10,14 +10,16 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useApi } from '../context/ApiContext';
-import { Goal } from '../types/goals';
+import { Goal, BaseGoal } from '../types/goals';
 import { Task } from '../types/tasks';
 import SimpleProgressCircle from '../components/SimpleProgressCircle';
+import AddGoalModal from '../components/AddGoalModal';
 import { createGradient } from '../utils/colorUtils';
 
 const { width } = Dimensions.get('window');
@@ -46,7 +48,7 @@ const TaskItem: React.FC<{ task: Task; onToggle: (taskId: string) => void }> = (
             {task.task_name}
           </Text>
           <Text style={styles.taskDate}>
-            {new Date(task.task_start_date).toLocaleDateString()}
+            {task.task_start_date ? new Date(task.task_start_date).toLocaleDateString() : 'No date'}
           </Text>
         </View>
       </View>
@@ -68,16 +70,24 @@ const getPriorityColor = (priority: number | undefined): string => {
 
 export default function GoalDetailsScreen() {
   const { goalId } = useLocalSearchParams<{ goalId: string }>();
-  const { getGoalById, getTasksByGoalId, updateTask } = useApi();
+  const { getGoalById, getTasksByGoalId, updateTask, updateGoal, deleteGoal } = useApi();
   
   const [goal, setGoal] = useState<Goal | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
+    console.log('GoalDetailsScreen - Received goalId:', goalId);
+    console.log('GoalDetailsScreen - goalId type:', typeof goalId);
     if (goalId) {
       loadGoalData();
+    } else {
+      console.error('GoalDetailsScreen - No goalId provided');
+      setError('No goal ID provided');
+      setLoading(false);
     }
   }, [goalId]);
 
@@ -86,15 +96,30 @@ export default function GoalDetailsScreen() {
       setLoading(true);
       setError(null);
       
-      const [goalResponse, tasksResponse] = await Promise.all([
-        getGoalById(parseInt(goalId)),
-        getTasksByGoalId(parseInt(goalId))
-      ]);
+      console.log('loadGoalData - Starting data fetch for goalId:', goalId);
+      console.log('loadGoalData - Parsed goalId:', parseInt(goalId));
       
+      // Load goal and tasks separately to handle partial failures
+      const goalResponse = await getGoalById(parseInt(goalId));
+      console.log('loadGoalData - Goal response:', goalResponse);
       setGoal(goalResponse.goal);
-      setTasks(tasksResponse.tasksArr);
+
+      try {
+        const tasksResponse = await getTasksByGoalId(parseInt(goalId));
+        console.log('loadGoalData - Tasks response:', tasksResponse);
+        setTasks(tasksResponse.tasksArr || []);
+      } catch (taskError: any) {
+        console.warn('Failed to load tasks for goal, continuing with empty array:', taskError);
+        setTasks([]);
+        // Don't throw error here, just continue with empty tasks
+      }
     } catch (err: any) {
       console.error('Error loading goal data:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
       setError(err.message || 'Failed to load goal details');
     } finally {
       setLoading(false);
@@ -125,9 +150,88 @@ export default function GoalDetailsScreen() {
     }
   };
 
+  const handleMarkGoalComplete = async () => {
+    if (!goal) return;
+    
+    try {
+      await updateGoal({
+        goal_id: goal.goal_id,
+        is_completed: !goal.is_completed,
+      });
+      
+      Alert.alert(
+        'Success', 
+        `Goal marked as ${!goal.is_completed ? 'completed' : 'incomplete'}!`
+      );
+      
+      await loadGoalData();
+      setShowMenu(false);
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to update goal status');
+    }
+  };
+
+  const handleDeleteGoal = async () => {
+    if (!goal) return;
+
+    Alert.alert(
+      'Delete Goal',
+      `Are you sure you want to delete "${goal.goal_name}"?\n\nThis will also unlink all associated tasks. This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteGoal(goal.goal_id);
+              Alert.alert('Success', 'Goal deleted successfully!');
+              router.back();
+            } catch (error: any) {
+              Alert.alert('Error', 'Failed to delete goal. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+    setShowMenu(false);
+  };
+
+  const handleEditGoal = () => {
+    setShowMenu(false);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEditedGoal = async (goalData: BaseGoal) => {
+    if (!goal) return;
+
+    try {
+      // Create update data with the goal_id and all the updated fields
+      const updateData = {
+        goal_id: goal.goal_id,
+        goal_name: goalData.goal_name,
+        goal_description: goalData.goal_description,
+        goal_target: goalData.goal_target,
+        goal_type: goalData.goal_type,
+        goal_color: goalData.goal_color,
+        goal_icon: goalData.goal_icon,
+        goal_start_date: goalData.goal_start_date,
+        goal_selected_days: goalData.goal_selected_days,
+      };
+
+      await updateGoal(updateData);
+      Alert.alert('Success', 'Goal updated successfully!');
+      await loadGoalData(); // Refresh the goal data
+      setShowEditModal(false);
+    } catch (error: any) {
+      console.error('Error updating goal:', error);
+      Alert.alert('Error', 'Failed to update goal. Please try again.');
+    }
+  };
+
   const getGoalGradient = (color: string): readonly [string, string] => {
     const gradient = createGradient(color || '#5D87FF');
-    return gradient as const;
+    return gradient;
   };
 
   if (loading) {
@@ -142,14 +246,66 @@ export default function GoalDetailsScreen() {
     );
   }
 
-  if (error || !goal) {
+  if (error || (!loading && !goal)) {
+    const isNetworkError = error && (error.includes('Network') || error.includes('fetch'));
+    const isNotFoundError = error && (error.includes('Not Found') || error.includes('not found'));
+    const isMissingIdError = error && error.includes('No goal ID provided');
+    
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f9f9f9" />
+        <StatusBar barStyle="dark-content" backgroundColor="#f1f4fe" />
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color="#FF6B6B" />
-          <Text style={styles.errorTitle}>Error</Text>
-          <Text style={styles.errorMessage}>{error || 'Goal not found'}</Text>
+          <Ionicons 
+            name={
+              isMissingIdError ? "help-circle-outline" :
+              isNotFoundError ? "search-outline" :
+              isNetworkError ? "wifi-outline" :
+              "alert-circle-outline"
+            } 
+            size={48} 
+            color="#FF6B6B" 
+          />
+          <Text style={styles.errorTitle}>
+            {isMissingIdError ? "Invalid Goal" :
+             isNotFoundError ? "Goal Not Found" :
+             isNetworkError ? "Connection Error" :
+             "Error"}
+          </Text>
+          <Text style={styles.errorMessage}>
+            {isMissingIdError ? "No goal ID was provided. Please go back and try again." :
+             isNotFoundError ? "This goal could not be found. It may have been deleted or you don't have access to it." :
+             isNetworkError ? "Unable to connect to the server. Please check your internet connection." :
+             error || 'Failed to load goal details. Please try again.'}
+          </Text>
+          
+          {!isMissingIdError && (
+            <TouchableOpacity style={styles.retryButton} onPress={loadGoalData}>
+              <Text style={styles.retryButtonText}>
+                {isNetworkError ? 'Retry Connection' : 'Try Again'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          
+          <TouchableOpacity 
+            style={[styles.retryButton, styles.errorBackButton]} 
+            onPress={() => router.back()}
+          >
+            <Text style={[styles.retryButtonText, styles.backButtonText]}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Additional null check for TypeScript
+  if (!goal) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#f1f4fe" />
+        <View style={styles.errorContainer}>
+          <Ionicons name="help-circle-outline" size={48} color="#FF6B6B" />
+          <Text style={styles.errorTitle}>Goal Not Available</Text>
+          <Text style={styles.errorMessage}>The goal data is not available.</Text>
           <TouchableOpacity style={styles.retryButton} onPress={loadGoalData}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
@@ -164,7 +320,7 @@ export default function GoalDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={goal.goal_color || '#5D87FF'} />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
       
       <LinearGradient
         colors={getGoalGradient(goal.goal_color)}
@@ -174,16 +330,16 @@ export default function GoalDetailsScreen() {
       >
         <View style={styles.headerTop}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.moreButton}>
-            <Ionicons name="ellipsis-horizontal" size={24} color="#fff" />
+          <TouchableOpacity style={styles.moreButton} onPress={() => setShowMenu(true)}>
+            <Ionicons name="ellipsis-horizontal" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
         
         <View style={styles.headerContent}>
           <View style={styles.goalInfo}>
-            <Ionicons name={goal.goal_icon as any} size={32} color="#fff" />
+            <Ionicons name={goal.goal_icon as any} size={20} color="#fff" />
             <View style={styles.goalTitleContainer}>
               <Text style={styles.goalTitle}>{goal.goal_name}</Text>
               <Text style={styles.goalType}>{goal.goal_type.toUpperCase()}</Text>
@@ -192,13 +348,13 @@ export default function GoalDetailsScreen() {
           
           <SimpleProgressCircle
             progress={progress}
-            size={100}
+            size={55}
             color="#fff"
             current={goal.goal_progress}
             target={goal.goal_target}
             backgroundColor="rgba(255, 255, 255, 0.3)"
             textColor="#fff"
-            strokeWidth={8}
+            strokeWidth={5}
           />
         </View>
         
@@ -242,7 +398,7 @@ export default function GoalDetailsScreen() {
             <Ionicons name="calendar-outline" size={20} color="#666" />
             <Text style={styles.infoLabel}>Start Date</Text>
             <Text style={styles.infoValue}>
-              {new Date(goal.goal_start_date).toLocaleDateString()}
+              {goal.goal_start_date ? new Date(goal.goal_start_date).toLocaleDateString() : 'No date'}
             </Text>
           </View>
           {goal.goal_end_date && (
@@ -250,7 +406,7 @@ export default function GoalDetailsScreen() {
               <Ionicons name="flag-outline" size={20} color="#666" />
               <Text style={styles.infoLabel}>End Date</Text>
               <Text style={styles.infoValue}>
-                {new Date(goal.goal_end_date).toLocaleDateString()}
+                {goal.goal_end_date ? new Date(goal.goal_end_date).toLocaleDateString() : 'No date'}
               </Text>
             </View>
           )}
@@ -288,6 +444,63 @@ export default function GoalDetailsScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Menu Modal */}
+      <Modal
+        visible={showMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <TouchableOpacity 
+          style={styles.menuOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMenu(false)}
+        >
+          <View style={styles.menuContainer}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleEditGoal}>
+              <Ionicons name="create-outline" size={20} color="#333" />
+              <Text style={styles.menuItemText}>Edit Goal</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={handleMarkGoalComplete}
+            >
+              <Ionicons 
+                name={goal?.is_completed ? "checkmark-circle" : "checkmark-circle-outline"} 
+                size={20} 
+                color={goal?.is_completed ? "#4CAF50" : "#333"} 
+              />
+              <Text style={[
+                styles.menuItemText,
+                goal?.is_completed && { color: "#4CAF50" }
+              ]}>
+                {goal?.is_completed ? 'Mark as Incomplete' : 'Mark as Complete'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.menuItem, styles.deleteMenuItem]} 
+              onPress={handleDeleteGoal}
+            >
+              <Ionicons name="trash-outline" size={20} color="#FF4444" />
+              <Text style={[styles.menuItemText, styles.deleteMenuText]}>Delete Goal</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Edit Goal Modal */}
+      {goal && (
+        <AddGoalModal
+          visible={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSave={handleSaveEditedGoal}
+          goalType={goal.goal_type}
+          initialData={goal}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -337,28 +550,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  errorBackButton: {
+    backgroundColor: '#6c757d',
+    marginTop: 12,
+  },
+  backButtonText: {
+    color: '#fff',
+  },
   header: {
-    paddingTop: 16,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingTop: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 8,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   moreButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -367,7 +587,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   goalInfo: {
     flexDirection: 'row',
@@ -375,31 +595,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   goalTitleContainer: {
-    marginLeft: 16,
+    marginLeft: 10,
     flex: 1,
   },
   goalTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   goalType: {
-    fontSize: 14,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '600',
   },
   goalDescription: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'rgba(255, 255, 255, 0.9)',
-    lineHeight: 22,
-    marginBottom: 20,
+    lineHeight: 18,
+    marginBottom: 10,
   },
   progressBar: {
-    height: 8,
+    height: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 4,
-    marginBottom: 8,
+    borderRadius: 2,
+    marginBottom: 4,
   },
   progressFill: {
     height: '100%',
@@ -407,7 +627,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   progressText: {
-    fontSize: 14,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '600',
     textAlign: 'center',
@@ -415,11 +635,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 8,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: -20,
+    marginTop: 16,
     marginBottom: 24,
   },
   statCard: {
@@ -436,13 +657,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#666',
     textAlign: 'center',
   },
@@ -561,5 +782,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 40,
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 60,
+    paddingRight: 16,
+  },
+  menuContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    minWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  deleteMenuItem: {
+    borderBottomWidth: 0,
+  },
+  deleteMenuText: {
+    color: '#FF4444',
   },
 });

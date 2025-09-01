@@ -1,4 +1,4 @@
-const { pool } = require('/opt/db'); // from DB layer (db.js in /opt)
+const { getPool } = require('/opt/nodejs/db'); // from DB layer (db.js in /opt)
 
 exports.handler = async (event) => {
   const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
@@ -41,6 +41,8 @@ exports.handler = async (event) => {
 
     const formattedEndDate = endDate.toISOString().split('T')[0];
 
+    const pool = getPool();
+    
     const result = await pool.query(
       'SELECT * FROM tasks WHERE user_id = $1 AND task_start_date BETWEEN $2 AND $3',
       [userId, date, formattedEndDate]

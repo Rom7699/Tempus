@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { CalendarList, DateData } from "react-native-calendars";
 import FloatingActionButton from "../../components/AddTaskButton";
@@ -67,6 +68,7 @@ const CalendarScreen: React.FC = () => {
     deleteTask,
     refreshTasks,
     lists,
+    goals,
     refreshLists,
   } = useApi();
 
@@ -99,20 +101,29 @@ const CalendarScreen: React.FC = () => {
     try {
       await addTask(taskData);
       setAddTaskModalVisible(false);
-      refreshTasks(currentMonthNumber, currentYear);
+      // Use setTimeout to defer the refresh to avoid useInsertionEffect warning
+      setTimeout(() => {
+        refreshTasks(currentMonthNumber, currentYear);
+      }, 0);
     } catch (error) {
       console.error("Error adding task:", error);
     }
   };
 
-  const handleEditTask = async (task: Task) => {
+  const handleEditTask = async (updateData: UpdateTaskInput) => {
     try {
-      // For editing, we'll need to implement this. For now, just close modals
+      console.log('[Calendar] Updating task with data:', updateData);
+      await updateTask(updateData);
       setTaskModalVisible(false);
+      
+      // Show success message
+      Alert.alert("Success", "Task updated successfully!");
+      
       refreshTasks(currentMonthNumber, currentYear);
       console.log("refreshing tasks after edit");
     } catch (error) {
       console.error("Error editing task:", error);
+      Alert.alert("Error", "Failed to update task. Please try again.");
     }
   };
 
@@ -135,7 +146,7 @@ const CalendarScreen: React.FC = () => {
         task_id: task.task_id,
         is_completed: isCompleted,
         task_goal_id: task.task_goal_id,
-        is_task: true,
+        is_event: false,
       };
 
       await updateTask(updateData);
@@ -287,6 +298,7 @@ const CalendarScreen: React.FC = () => {
           onDelete={handleDeleteTask}
           onToggle={handleToggleTaskCompletion}
           availableLists={lists}
+          availableGoals={goals}
         />
       )}
     </SafeAreaView>

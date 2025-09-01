@@ -1,4 +1,4 @@
-const { pool } = require('/opt/db');
+const { getPool } = require('/opt/nodejs/db');
 
 exports.handler = async (event) => {
   const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
@@ -24,6 +24,8 @@ exports.handler = async (event) => {
   }
 
   try {
+    const pool = getPool();
+    
     const result = await pool.query(
       `SELECT * FROM tasks 
      WHERE user_id = $1 AND task_list_id = $2`,

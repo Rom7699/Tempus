@@ -10,17 +10,20 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Task } from "@/types/tasks";
+import { Task, UpdateTaskInput } from "@/types/tasks";
 import { List } from "@/types/lists";
+import { Goal } from "@/types/goals";
+import AddTaskBottomSheet from "./AddTaskBottomSheet";
 
 interface DisplayTaskModalProps {
   visible: boolean;
   onClose: () => void;
   task: Task;
-  onEdit: (task: Task) => void;
+  onEdit: (updateData: UpdateTaskInput) => void;
   onDelete: (taskId: string) => void;
   onToggle: (task: Task, isCompleted: boolean) => void;
   availableLists?: List[];
+  availableGoals?: Goal[];
   onCreateNewList?: (listName: string) => Promise<List>;
 }
 
@@ -32,6 +35,7 @@ const DisplayTaskModal: React.FC<DisplayTaskModalProps> = ({
   onDelete,
   onToggle,
   availableLists = [],
+  availableGoals = [],
   onCreateNewList = async () => ({
     list_id: "1",
     list_name: "Default",
@@ -40,6 +44,14 @@ const DisplayTaskModal: React.FC<DisplayTaskModalProps> = ({
 }) => {
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [localTask, setLocalTask] = useState<Task>(task);
+
+  // Find linked list and goal
+  const linkedList = availableLists.find(list => 
+    Number(list.list_id) === localTask.task_list_id
+  );
+  const linkedGoal = availableGoals.find(goal => 
+    goal.goal_id === localTask.task_goal_id
+  );
 
   // Format functions
   const formatDate = (dateString: string | undefined): string => {
@@ -88,16 +100,31 @@ const DisplayTaskModal: React.FC<DisplayTaskModalProps> = ({
       },
     ]);
   };
-  // Handle edit task
-  const handleEditTask = (updatedTask: Task) => {
-    onEdit(updatedTask);
-    setIsEditModalVisible(false);
-    onClose();
+  // Handle opening edit modal
+  const handleEditPress = () => {
+    console.log('[DisplayTaskModal] Edit button pressed, opening edit modal...');
+    console.log('[DisplayTaskModal] Current task:', localTask);
+    setIsEditModalVisible(true);
+    console.log('[DisplayTaskModal] Edit modal visibility set to:', true);
+  };
+
+  // Handle saving edited task
+  const handleUpdateTask = async (updateData: UpdateTaskInput) => {
+    try {
+      console.log('[DisplayTaskModal] Updating task with data:', updateData);
+      await onEdit(updateData);
+      console.log('[DisplayTaskModal] Task update completed');
+      setIsEditModalVisible(false);
+      onClose();
+    } catch (error) {
+      console.error("[DisplayTaskModal] Error updating task:", error);
+      Alert.alert("Error", "Failed to update task");
+    }
   };
   // Handlers for task completion toggle
   const handleToggle = () => {
     // Only allow toggling completion for tasks
-    if (localTask.is_task === true) {
+    if (localTask.is_event !== true) {
       const updatedCompletion = !localTask.is_completed;
       const updatedTask = { ...localTask, is_completed: updatedCompletion };
 
@@ -120,7 +147,7 @@ const DisplayTaskModal: React.FC<DisplayTaskModalProps> = ({
       <Modal
         animationType="slide"
         transparent={true}
-        visible={visible}
+        visible={visible && !isEditModalVisible}
         onRequestClose={onClose}
       >
         <View style={styles.centeredView}>
@@ -141,16 +168,44 @@ const DisplayTaskModal: React.FC<DisplayTaskModalProps> = ({
                 {/* Task Type Indicator */}
                 <View style={styles.taskTypeContainer}>
                   <Ionicons
-                    name={localTask.is_task ? "calendar" : "checkbox-outline"}
+                    name={localTask.is_event ? "calendar" : "checkbox-outline"}
                     size={16}
                     color="#5D87FF"
                   />
                   <Text style={styles.taskTypeText}>
-                    {localTask.is_task ? "Task" : "Event"}
+                    {localTask.is_event ? "Event" : "Task"}
                   </Text>
                 </View>
+
+                {/* Linked List and Goal */}
+                {(linkedList || linkedGoal) && (
+                  <View style={styles.linksSection}>
+                    {linkedList && (
+                      <View style={[styles.linkBadge, styles.listBadge]}>
+                        <View style={styles.iconContainer}>
+                          <Ionicons name="list" size={14} color="#fff" />
+                        </View>
+                        <Text style={styles.linkBadgeText}>
+                          {linkedList.list_name}
+                        </Text>
+                      </View>
+                    )}
+
+                    {linkedGoal && (
+                      <View style={[styles.linkBadge, styles.goalBadge]}>
+                        <View style={styles.iconContainer}>
+                          <Ionicons name="flag" size={14} color="#fff" />
+                        </View>
+                        <Text style={styles.linkBadgeText}>
+                          {linkedGoal.goal_name}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+
                 {/* Completion Status - Only show for events */}
-                {localTask.is_task === true && (
+                {localTask.is_event !== true && (
                   <TouchableOpacity
                     style={[
                       styles.completionStatus,
@@ -327,10 +382,7 @@ const DisplayTaskModal: React.FC<DisplayTaskModalProps> = ({
 
                 <TouchableOpacity
                   style={[styles.actionButton, styles.editButton]}
-                  onPress={() => {
-                    onEdit(localTask);
-                    onClose();
-                  }}
+                  onPress={handleEditPress}
                 >
                   <Ionicons name="create-outline" size={20} color="#fff" />
                   <Text style={styles.actionButtonText}>Edit</Text>
@@ -340,6 +392,14 @@ const DisplayTaskModal: React.FC<DisplayTaskModalProps> = ({
           </View>
         </View>
       </Modal>
+
+      {/* Edit Task Bottom Sheet */}
+      <AddTaskBottomSheet
+        visible={isEditModalVisible}
+        onClose={() => setIsEditModalVisible(false)}
+        onUpdate={handleUpdateTask}
+        editTask={localTask}
+      />
     </>
   );
 };
@@ -549,6 +609,45 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
     marginLeft: 8,
+  },
+  linksSection: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 8,
+  },
+  linkBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  listBadge: {
+    backgroundColor: '#E3F2FD',
+  },
+  goalBadge: {
+    backgroundColor: '#FFF3E0',
+  },
+  iconContainer: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(93, 135, 255, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  linkBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+    maxWidth: 120,
   },
 });
 

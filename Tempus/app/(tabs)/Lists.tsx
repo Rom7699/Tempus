@@ -9,12 +9,14 @@ import {
   StatusBar,
   ActivityIndicator,
   Alert,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useApi } from "@/context/ApiContext";
 import { List, BaseList } from "@/types/lists";
 import { Task, BaseTask, UpdateTaskInput } from "@/types/tasks";
 import AddListModal from "@/components/AddListModal";
+import EditListModal from "@/components/EditListModal";
 import TaskDetailItem from "../../components/NewTaskItem";
 import AddTaskBottomSheet from "@/components/AddTaskBottomSheet";
 import DisplayTaskModal from "@/components/DisplayTaskModal";
@@ -36,9 +38,14 @@ const Header: React.FC<{ title: string; onAddList: () => void }> = ({
 };
 
 // List component
-const ListItem: React.FC<{ list: List; onPress: () => void }> = ({
+const ListItem: React.FC<{ 
+  list: List; 
+  onPress: () => void;
+  onMenu: (event: any) => void;
+}> = ({
   list,
   onPress,
+  onMenu,
 }) => {
   return (
     <TouchableOpacity
@@ -47,7 +54,24 @@ const ListItem: React.FC<{ list: List; onPress: () => void }> = ({
     >
       <Text style={styles.listIcon}>{list.list_icon}</Text>
       <Text style={styles.listName}>{list.list_name}</Text>
-      <Ionicons name="chevron-forward" size={24} color="#CCCCCC" />
+      <View style={styles.listItemActions}>
+        <TouchableOpacity
+          ref={(ref) => {
+            // Store reference for position calculation
+            if (ref) {
+              (ref as any)._list = list;
+            }
+          }}
+          style={styles.menuButton}
+          onPress={(e) => {
+            e.stopPropagation(); // Prevent triggering the list press
+            onMenu(e);
+          }}
+        >
+          <Ionicons name="ellipsis-horizontal" size={20} color="#666" />
+        </TouchableOpacity>
+        <Ionicons name="chevron-forward" size={24} color="#CCCCCC" />
+      </View>
     </TouchableOpacity>
   );
 };
@@ -57,9 +81,13 @@ const ListsScreen: React.FC = () => {
   // Use the API context
   const {
     lists,
+    goals,
     listLoading,
     listError,
     addList,
+    updateList,
+    deleteList,
+    unlinkAllTasksFromList,
     addTask,
     deleteTask,
     updateTask,
@@ -71,10 +99,14 @@ const ListsScreen: React.FC = () => {
   const [selectedList, setSelectedList] = useState<List | null>(null);
   const [tasksForList, setTasksForList] = useState<Task[]>([]);
   const [isAddListModalVisible, setIsAddListModalVisible] = useState(false);
+  const [isEditListModalVisible, setIsEditListModalVisible] = useState(false);
   const [isAddTaskModalVisible, setIsAddTaskModalVisible] = useState(false);
   const [isTasksLoading, setIsTasksLoading] = useState(false);
   const [taskModalVisible, setTaskModalVisible] = useState<boolean>(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [listMenuVisible, setListMenuVisible] = useState(false);
+  const [menuList, setMenuList] = useState<List | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
 
   // Load lists when component mounts
   useEffect(() => {
@@ -146,10 +178,131 @@ const ListsScreen: React.FC = () => {
     }
   };
 
+  // Handle menu press
+  const handleListMenu = (list: List, event: any) => {
+    // Get the position of the pressed button
+    const target = event.currentTarget;
+    target.measureInWindow((x: number, y: number, width: number, height: number) => {
+      const menuWidth = 160;
+      const menuHeight = 100; // Approximate height of the menu
+      
+      // Calculate screen dimensions
+      const screenWidth = require('react-native').Dimensions.get('window').width;
+      const screenHeight = require('react-native').Dimensions.get('window').height;
+      
+      // Calculate position with boundary checking
+      let menuX = x - menuWidth + 50; // Position to the left of button with some overlap
+      let menuY = y + height + 5; // Position below the button
+      
+      // Ensure menu doesn't go off the left edge
+      if (menuX < 10) {
+        menuX = x + width - menuWidth + 10; // Position to the right of button instead
+      }
+      
+      // Ensure menu doesn't go off the right edge  
+      if (menuX + menuWidth > screenWidth - 10) {
+        menuX = screenWidth - menuWidth - 10;
+      }
+      
+      // Ensure menu doesn't go off the bottom edge
+      if (menuY + menuHeight > screenHeight - 100) {
+        menuY = y - menuHeight - 5; // Position above the button instead
+      }
+      
+      setMenuPosition({ x: menuX, y: menuY });
+      setMenuList(list);
+      setListMenuVisible(true);
+    });
+  };
+
+  // Handle editing a list
+  const handleEditList = () => {
+    setListMenuVisible(false);
+    setIsEditListModalVisible(true);
+  };
+
+  // Handle saving edited list
+  const handleSaveEditedList = async (updateData: Partial<BaseList>) => {
+    if (!menuList) return;
+
+    try {
+      await updateList(menuList.list_id.toString(), updateData);
+      Alert.alert("Success", "List updated successfully!");
+      setIsEditListModalVisible(false);
+    } catch (error: any) {
+      console.error("Error updating list:", error);
+      Alert.alert("Error", "Failed to update list. Please try again.");
+    }
+  };
+
+  // Handle deleting a list
+  const handleDeleteList = async () => {
+    if (!menuList) return;
+
+    Alert.alert(
+      "Delete List",
+      `Are you sure you want to delete "${menuList.list_name}"?\n\nThis action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteList(menuList.list_id.toString());
+              Alert.alert("Success", "List deleted successfully!");
+              // If the deleted list was currently selected, clear the selection
+              if (selectedList && selectedList.list_id === menuList.list_id) {
+                setSelectedList(null);
+              }
+              setListMenuVisible(false);
+            } catch (error: any) {
+              console.error("Error deleting list:", error);
+              // Check if it's a conflict error (tasks still linked)
+              if (error.message && error.message.includes('task(s) linked')) {
+                Alert.alert(
+                  "Cannot Delete List", 
+                  error.message,
+                  [{ text: "OK" }]
+                );
+              } else {
+                Alert.alert("Error", "Failed to delete list. Please try again.");
+              }
+              setListMenuVisible(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Helper function to refresh tasks for the current list
+  const refreshTasksForCurrentList = async () => {
+    if (selectedList) {
+      setIsTasksLoading(true);
+      try {
+        const listId = Number(selectedList.list_id);
+        const response = await getTasksByListId(listId);
+        if (response && response.tasksArr) {
+          setTasksForList(response.tasksArr);
+        } else {
+          setTasksForList([]);
+        }
+      } catch (error) {
+        console.error("Error refreshing tasks for list:", error);
+        setTasksForList([]);
+      } finally {
+        setIsTasksLoading(false);
+      }
+    }
+  };
+
   const handleAddTask = async (taskData: BaseTask) => {
     try {
       await addTask(taskData);
       setIsAddTaskModalVisible(false);
+      // Refresh the tasks for the current list to show the new task
+      await refreshTasksForCurrentList();
     } catch (error) {
       console.error("Error adding task:", error);
     }
@@ -162,12 +315,20 @@ const ListsScreen: React.FC = () => {
   };
 
   // Handle editing a task
-  const handleEditTask = async (task: Task) => {
+  const handleEditTask = async (updateData: UpdateTaskInput) => {
     try {
-      // For editing, we'll need to implement this. For now, just close modals
+      console.log('[Lists] Updating task with data:', updateData);
+      await updateTask(updateData);
       setTaskModalVisible(false);
+      
+      // Show success message
+      Alert.alert("Success", "Task updated successfully!");
+      
+      // Refresh tasks for the current list to show the updated task
+      await refreshTasksForCurrentList();
     } catch (error) {
       console.error("Error editing task:", error);
+      Alert.alert("Error", "Failed to update task. Please try again.");
     }
   };
 
@@ -177,14 +338,8 @@ const ListsScreen: React.FC = () => {
       await deleteTask(taskId);
       setTaskModalVisible(false);
 
-      // Refresh tasks for the current list if one is selected
-      if (selectedList) {
-        const listId = Number(selectedList.list_id);
-        const response = await getTasksByListId(listId);
-        if (response && response.tasksArr) {
-          setTasksForList(response.tasksArr);
-        }
-      }
+      // Refresh tasks for the current list to show the updated task list
+      await refreshTasksForCurrentList();
     } catch (error) {
       console.error("Error deleting task:", error);
       Alert.alert("Error", "Failed to delete task. Please try again.");
@@ -201,23 +356,51 @@ const ListsScreen: React.FC = () => {
         task_id: task.task_id,
         is_completed: isCompleted,
         task_goal_id: task.task_goal_id,
-        is_task: true, // Set to true as required by the API
+        is_event: false, // Set to false for tasks
       };
 
       await updateTask(updateData);
 
-      // Refresh tasks for the current list if one is selected
-      if (selectedList) {
-        const listId = Number(selectedList.list_id);
-        const response = await getTasksByListId(listId);
-        if (response && response.tasksArr) {
-          setTasksForList(response.tasksArr);
-        }
-      }
+      // Refresh tasks for the current list to show the updated task list
+      await refreshTasksForCurrentList();
     } catch (error) {
       console.error("Error toggling task completion:", error);
       Alert.alert("Error", "Failed to update task status. Please try again.");
     }
+  };
+
+  // Handle unlinking all tasks from the current list
+  const handleUnlinkAllTasks = async () => {
+    if (!selectedList) return;
+
+    const taskCount = tasksForList.length;
+    if (taskCount === 0) {
+      Alert.alert("No Tasks", "There are no tasks linked to this list.");
+      return;
+    }
+
+    Alert.alert(
+      "Unlink All Tasks",
+      `Are you sure you want to unlink all ${taskCount} task(s) from "${selectedList.list_name}"?\n\nTasks will not be deleted, they will just be unlinked from this list.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Unlink All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const response = await unlinkAllTasksFromList(selectedList.list_id.toString());
+              Alert.alert("Success", "All tasks have been unlinked from this list.");
+              // Refresh the tasks for the current list to show the empty list
+              await refreshTasksForCurrentList();
+            } catch (error: any) {
+              console.error("Error unlinking tasks:", error);
+              Alert.alert("Error", error.message || "Failed to unlink tasks. Please try again.");
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -241,6 +424,19 @@ const ListsScreen: React.FC = () => {
             <Ionicons name="arrow-back" size={24} color="#333" />
             <Text style={styles.backButtonText}>Back to Lists</Text>
           </TouchableOpacity>
+
+          {/* Unlink all tasks button - only show if there are tasks */}
+          {tasksForList.length > 0 && (
+            <TouchableOpacity
+              style={styles.unlinkAllButton}
+              onPress={handleUnlinkAllTasks}
+            >
+              <Ionicons name="unlink" size={20} color="#FF6B35" />
+              <Text style={styles.unlinkAllButtonText}>
+                Unlink All Tasks ({tasksForList.length})
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Tasks for selected list */}
           {isTasksLoading ? (
@@ -305,7 +501,11 @@ const ListsScreen: React.FC = () => {
               data={lists}
               keyExtractor={(item) => item.list_id.toString()}
               renderItem={({ item }) => (
-                <ListItem list={item} onPress={() => handleListPress(item)} />
+                <ListItem 
+                  list={item} 
+                  onPress={() => handleListPress(item)} 
+                  onMenu={(event) => handleListMenu(item, event)}
+                />
               )}
               contentContainerStyle={styles.listsListContent}
             />
@@ -352,6 +552,55 @@ const ListsScreen: React.FC = () => {
           onDelete={handleDeleteTask}
           onToggle={handleToggleTaskCompletion}
           availableLists={lists}
+          availableGoals={goals}
+        />
+      )}
+
+      {/* List Menu Modal */}
+      <Modal
+        visible={listMenuVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setListMenuVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.menuOverlay}
+          activeOpacity={1}
+          onPress={() => setListMenuVisible(false)}
+        >
+          <View 
+            style={[
+              styles.menuContainer,
+              {
+                position: 'absolute',
+                top: menuPosition.y,
+                left: menuPosition.x,
+              }
+            ]}
+          >
+            <TouchableOpacity style={styles.menuItem} onPress={handleEditList}>
+              <Ionicons name="create-outline" size={20} color="#333" />
+              <Text style={styles.menuItemText}>Edit List</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.menuItem, styles.deleteMenuItem]} 
+              onPress={handleDeleteList}
+            >
+              <Ionicons name="trash-outline" size={20} color="#FF4444" />
+              <Text style={[styles.menuItemText, styles.deleteMenuText]}>Delete List</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Edit List Modal */}
+      {menuList && (
+        <EditListModal
+          visible={isEditListModalVisible}
+          onClose={() => setIsEditListModalVisible(false)}
+          onSave={handleSaveEditedList}
+          list={menuList}
         />
       )}
     </SafeAreaView>
@@ -446,6 +695,16 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     flex: 1,
   },
+  listItemActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  menuButton: {
+    padding: 8,
+    borderRadius: 16,
+    backgroundColor: "rgba(102, 102, 102, 0.1)",
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
@@ -484,6 +743,23 @@ const styles = StyleSheet.create({
     color: "#333",
     marginLeft: 8,
   },
+  unlinkAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    backgroundColor: "#fff8f5",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#FFE5D0",
+  },
+  unlinkAllButtonText: {
+    fontSize: 14,
+    color: "#FF6B35",
+    marginLeft: 8,
+    fontWeight: "500",
+  },
   tasksList: {
     flex: 1,
   },
@@ -516,6 +792,40 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  menuContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    minWidth: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  deleteMenuItem: {
+    borderBottomWidth: 0,
+  },
+  deleteMenuText: {
+    color: '#FF4444',
   },
 });
 

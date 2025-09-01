@@ -34,52 +34,50 @@ exports.handler = async (event) => {
 
   try {
     const pool = getPool();
-    const result = await pool.query(
-      `SELECT * FROM goals 
+    
+    // First verify the goal exists and belongs to the user
+    const goalCheck = await pool.query(
+      `SELECT goal_id FROM goals 
        WHERE user_id = $1 AND goal_id = $2`,
       [userId, parsedGoalId]
     );
 
-    if (result.rows.length === 0) {
+    if (goalCheck.rows.length === 0) {
       return {
         statusCode: 404,
-        body: JSON.stringify({ message: 'Goal not found' }),
+        body: JSON.stringify({ message: 'Goal not found or not accessible' }),
       };
     }
 
-    // Safe array conversion function
-    const ensureArray = (value) => {
-      if (value === null || value === undefined) return null;
-      if (Array.isArray(value)) return value;
-      if (typeof value === 'string') {
-        // Handle PostgreSQL array format {1,2,3,4,5}
-        if (value.startsWith('{') && value.endsWith('}')) {
-          return value.slice(1, -1).split(',').map(Number);
-        }
-        // Handle JSON string format [1,2,3,4,5]
-        try {
-          return JSON.parse(value);
-        } catch {
-          return null;
-        }
-      }
-      return null;
-    };
+    // Get tasks linked to this goal
+    const result = await pool.query(
+      `SELECT t.* FROM tasks t
+       WHERE t.user_id = $1 AND t.task_goal_id = $2
+       ORDER BY t.task_start_date DESC`,
+      [userId, parsedGoalId]
+    );
 
-    // Process goal data to ensure arrays are properly formatted
-    const processedGoal = {
-      ...result.rows[0],
-      goal_selected_days: ensureArray(result.rows[0].goal_selected_days)
-    };
+    console.log(`Found ${result.rows.length} tasks for goal ${parsedGoalId}`);
 
-    console.log("Query result:", processedGoal);
-    
+    // Process tasks to ensure proper data formatting
+    const processedTasks = result.rows.map(task => ({
+      ...task,
+      // Ensure dates are in proper format
+      task_start_date: task.task_start_date ? task.task_start_date.toISOString() : null,
+      task_end_date: task.task_end_date ? task.task_end_date.toISOString() : null,
+      created_at: task.created_at ? task.created_at.toISOString() : null,
+      updated_at: task.updated_at ? task.updated_at.toISOString() : null,
+      // Ensure boolean fields are proper booleans
+      is_completed: Boolean(task.is_completed),
+      is_recurring: Boolean(task.is_recurring),
+    }));
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: 'Goal fetched successfully',
-        goal: processedGoal,
+        message: 'Tasks fetched successfully',
+        tasksArr: processedTasks,
       }),
     };
   } catch (err) {

@@ -67,7 +67,7 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
   const goalIcons = [
     'flag', 'trophy', 'star', 'heart', 'fitness',
     'book', 'briefcase', 'home', 'school', 'leaf',
-    'flame', 'diamond', 'rocket', 'medal', 'target'
+    'flame', 'diamond', 'rocket', 'medal', 'radio-button-on'
   ];
 
 

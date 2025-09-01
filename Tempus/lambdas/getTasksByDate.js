@@ -1,4 +1,4 @@
-const { pool } = require('/opt/db'); // from DB layer (db.js in /opt)
+const { getPool } = require('/opt/nodejs/db'); // from DB layer (db.js in /opt)
 // Format of date: YYYY-MM-DD
 
 exports.handler = async (event) => {
@@ -27,6 +27,8 @@ exports.handler = async (event) => {
   }
 
   try {
+    const pool = getPool();
+    
     const result = await pool.query(
       'SELECT * FROM tasks WHERE user_id = $1 AND task_start_date = $2',
       [userId, date]

@@ -1,16 +1,6 @@
-const { pool } = require('/opt/db'); // from DB layer (db.js in /opt)
+const { getPool } = require('/opt/nodejs/db'); // from DB layer (db.js in /opt)
 const { v4: uuidv4 } = require('uuid'); // uuid from uuid layer
 
-// const pool = new Pool({
-//   host: process.env.PG_HOST,
-//   port: parseInt(process.env.PG_PORT),
-//   user: process.env.PG_USER,
-//   password: process.env.PG_PASSWORD,
-//   database: process.env.PG_DATABASE,
-//   ssl: {
-//     rejectUnauthorized: false
-//   }
-// }); // content of db.js layer.
 
 exports.handler = async (event) => {
   try {
@@ -29,6 +19,7 @@ exports.handler = async (event) => {
       task_name,
       task_description,
       task_list_id, 
+      task_goal_id,
       task_start_date, 
       task_start_time, 
       task_end_date, 
@@ -59,6 +50,7 @@ exports.handler = async (event) => {
       task_name,
       task_description,
       task_list_id,
+      task_goal_id,
       task_start_date,
       task_start_time,
       task_end_date,
@@ -66,29 +58,34 @@ exports.handler = async (event) => {
       task_reminder,
       task_location,
       task_attendees,
-      task_priority: 1, // default to '1'
+      task_priority: task_priority || 1, // use provided priority or default to '1'
       task_energy_level,
       taskCreationDate: new Date().toISOString(),
       is_ai_generated,
       is_event,
-      is_completed: is_event ? null : (is_completed ?? false), // null for tasks, true/false for events
+      is_completed: is_event ? null : (is_completed ?? false), // null for events, true/false for tasks
     };
+
 
     const query = `
       INSERT INTO tasks (
-        user_id, task_id, task_name, task_description, task_list_id, 
+        user_id, task_id, task_name, task_description, task_list_id, task_goal_id,
         task_start_date, task_start_time, task_end_date, task_end_time, task_reminder, 
         task_location, task_attendees, task_priority, task_energy_level, task_creation_date,
         is_ai_generated, is_event, is_completed
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,$15,$16,$17,$18)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
     `;
     console.log("About to run INSERT query");
+
+    const pool = getPool();
+    
     await pool.query(query, [
       task.userId,
       task.taskId,
       task.task_name,
       task.task_description,
       task.task_list_id,
+      task.task_goal_id,
       task.task_start_date,
       task.task_start_time,
       task.task_end_date,

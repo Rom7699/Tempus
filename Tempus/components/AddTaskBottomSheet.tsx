@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import ListSelectionModal from "./ListSelectionModal";
 import GoalSelectionModal from "./GoalSelectionModal";
-import { BaseTask } from "@/types/tasks";
+import { BaseTask, Task, UpdateTaskInput } from "@/types/tasks";
 import { List } from "@/types/lists";
 import { Goal } from "@/types/goals";
 import { useApi } from "@/context/ApiContext";
@@ -30,21 +30,28 @@ interface AddTaskBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   onSave?: (task: BaseTask) => Promise<void>; // Optional as we'll use the context by default
+  onUpdate?: (task: UpdateTaskInput) => Promise<void>; // For edit mode
   selectedDate?: Date;
   selectedList?: List | null;
   selectedGoal?: Goal | null;
+  editTask?: Task | null; // Task to edit (if provided, component will be in edit mode)
 }
 
 const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
   visible,
   onClose,
   onSave,
+  onUpdate,
   selectedDate,
   selectedList: initialSelectedList,
   selectedGoal: initialSelectedGoal,
+  editTask,
 }) => {
   // Use the API context
-  const { lists, goals, addTask: contextAddTask, taskLoading, addList } = useApi();
+  const { lists, goals, addTask: contextAddTask, updateTask: contextUpdateTask, taskLoading, addList } = useApi();
+
+  // Determine if we're in edit mode
+  const isEditMode = !!editTask;
 
   // Animation values
   const translateY = useRef(new Animated.Value(height)).current;
@@ -83,7 +90,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [location, setLocation] = useState("");
   const [attendees, setAttendees] = useState("");
-  const [priority, setPriority] = useState(2); // Default to Medium
+  const [priority, setPriority] = useState(2); // Default to Medium (2 in database)
   const [energyLevel, setEnergyLevel] = useState(50); // Default to 50%
   const [isSaving, setIsSaving] = useState(false);
 
@@ -108,32 +115,73 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
   // Reset state when bottom sheet becomes visible or selectedDate changes
   useEffect(() => {
     if (visible) {
-      // Reset all fields
-      setTaskName("");
-      setTaskType("task");
-      setDescription("");
-      setReminderEnabled(false);
-      setShowAdvancedOptions(false);
-      setLocation("");
-      setAttendees("");
-      setPriority(2);
-      setEnergyLevel(50);
-      setError(null);
-      setIsSaving(false);
-      setTempDate(null);
+      if (isEditMode && editTask) {
+        
+        // Helper function to combine date and time properly
+        const combineDateAndTime = (dateStr: string, timeStr: string) => {
+          const date = new Date(dateStr);
+          if (timeStr) {
+            const [hours, minutes] = timeStr.split(':');
+            date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+          }
+          return date;
+        };
+        
+        // Populate fields with existing task data
+        setTaskName(editTask.task_name || "");
+        setTaskType(editTask.is_event ? "event" : "task");
+        setDescription(editTask.task_description || "");
+        
+        // Properly combine date and time for start and end dates
+        const startDateTime = editTask.task_start_date 
+          ? combineDateAndTime(editTask.task_start_date, editTask.task_start_time || "00:00")
+          : initializeDate();
+        const endDateTime = editTask.task_end_date
+          ? combineDateAndTime(editTask.task_end_date, editTask.task_end_time || "01:00")
+          : initializeEndDate();
+          
+        
+        setStartDate(startDateTime);
+        setEndDate(endDateTime);
+        setReminderEnabled(editTask.task_reminder || false);
+        setLocation(editTask.task_location || "");
+        setAttendees(editTask.task_attendees?.join(", ") || "");
+        setPriority(editTask.task_priority ?? 2); // Default to Medium if undefined
+        setEnergyLevel(editTask.task_energy_level || 50);
+        
+        // Set selected list and goal
+        const taskList = lists.find(list => Number(list.list_id) === editTask.task_list_id);
+        const taskGoal = goals.find(goal => goal.goal_id === editTask.task_goal_id);
+        setSelectedList(taskList || null);
+        setSelectedGoal(taskGoal || null);
+      } else {
+        // Reset all fields for new task
+        setTaskName("");
+        setTaskType("task");
+        setDescription("");
+        setReminderEnabled(false);
+        setShowAdvancedOptions(false);
+        setLocation("");
+        setAttendees("");
+        setPriority(2); // Default to Medium
+        setEnergyLevel(50);
+        setError(null);
+        setIsSaving(false);
+        setTempDate(null);
 
-      // Reset dates
-      setStartDate(initializeDate());
-      setEndDate(initializeEndDate());
+        // Reset dates
+        setStartDate(initializeDate());
+        setEndDate(initializeEndDate());
 
-      // Reset list and goal selection
-      setSelectedList(initialSelectedList || null);
-      setSelectedGoal(initialSelectedGoal || null);
+        // Reset list and goal selection
+        setSelectedList(initialSelectedList || null);
+        setSelectedGoal(initialSelectedGoal || null);
+      }
 
       // Animate in
       animateIn();
     }
-  }, [visible, selectedDate, lists]);
+  }, [visible, selectedDate, editTask, isEditMode, lists, goals]);
 
   // Animation functions
   const animateIn = () => {
@@ -412,49 +460,130 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
         return `${hours}:${minutes}`;
       };
 
-      const taskData: BaseTask = {
-        task_name: taskName.trim(),
-        task_description: description.trim(),
-        task_start_date: startDate.toISOString().split("T")[0],
-        task_start_time: formatTimeString(startDate),
-        task_end_date: endDate.toISOString().split("T")[0],
-        task_end_time: formatTimeString(endDate),
-        task_reminder: reminderEnabled,
-        task_location: location.trim(),
-        task_attendees:
-          attendees.trim() === ""
-            ? []
-            : attendees.split(",").map((a) => a.trim()),
-        task_priority: priority,
-        task_energy_level: energyLevel,
-        task_list_id: selectedList?.list_id ? Number(selectedList.list_id) : undefined,
-        task_goal_id: selectedGoal?.goal_id || undefined,
-        is_task: taskType === "task",
-      };
+      if (isEditMode && editTask) {
+        // Update existing task
+        const updateData: UpdateTaskInput = {
+          task_id: editTask.task_id,
+          task_name: taskName.trim(),
+          task_description: description.trim(),
+          task_start_date: startDate.toISOString().split("T")[0],
+          task_start_time: formatTimeString(startDate),
+          task_end_date: endDate.toISOString().split("T")[0],
+          task_end_time: formatTimeString(endDate),
+          task_reminder: reminderEnabled,
+          task_location: location.trim(),
+          task_attendees:
+            attendees.trim() === ""
+              ? []
+              : attendees.split(",").map((a) => a.trim()),
+          task_priority: priority,
+          task_energy_level: energyLevel,
+          task_list_id: selectedList?.list_id ? Number(selectedList.list_id) : undefined,
+          task_goal_id: selectedGoal?.goal_id || undefined,
+          is_event: taskType === "event",
+        };
 
-      // Use the provided onSave function or fall back to the context's addTask
-      if (onSave) {
-        await onSave(taskData);
+        // Use the provided onUpdate function or fall back to the context's updateTask
+        if (onUpdate) {
+          await onUpdate(updateData);
+        } else {
+          await contextUpdateTask(updateData);
+        }
       } else {
-        await contextAddTask(taskData);
+        // Create new task
+        const taskData: BaseTask = {
+          task_name: taskName.trim(),
+          task_description: description.trim(),
+          task_start_date: startDate.toISOString().split("T")[0],
+          task_start_time: formatTimeString(startDate),
+          task_end_date: endDate.toISOString().split("T")[0],
+          task_end_time: formatTimeString(endDate),
+          task_reminder: reminderEnabled,
+          task_location: location.trim(),
+          task_attendees:
+            attendees.trim() === ""
+              ? []
+              : attendees.split(",").map((a) => a.trim()),
+          task_priority: priority,
+          task_energy_level: energyLevel,
+          task_list_id: selectedList?.list_id ? Number(selectedList.list_id) : undefined,
+          task_goal_id: selectedGoal?.goal_id || undefined,
+          is_event: taskType === "event",
+        };
+
+        // Use the provided onSave function or fall back to the context's addTask
+        if (onSave) {
+          await onSave(taskData);
+        } else {
+          await contextAddTask(taskData);
+        }
       }
 
-      // Close the modal on success
-      animateOut(onClose);
+      setIsSaving(false);
+      
+      // Close the modal on success using requestAnimationFrame to avoid scheduling updates during render
+      requestAnimationFrame(() => {
+        animateOut(onClose);
+      });
     } catch (error: any) {
       console.error(
         "Error creating task:",
         error?.response?.data || error.message
       );
       setError(error?.response?.data?.message || error.message || "Failed to create task");
-    } finally {
       setIsSaving(false);
     }
   };
 
+  // Memoized handlers to prevent unnecessary re-renders
+  const handleTaskNameChange = useCallback((text: string) => {
+    setTaskName(text);
+  }, []);
+
+  const handleDescriptionChange = useCallback((text: string) => {
+    setDescription(text);
+  }, []);
+
+  const handleLocationChange = useCallback((text: string) => {
+    setLocation(text);
+  }, []);
+
+  const handleAttendeesChange = useCallback((text: string) => {
+    setAttendees(text);
+  }, []);
+
+  const handleTaskTypeChange = useCallback((type: "event" | "task") => {
+    setTaskType(type);
+  }, []);
+
+  const handlePriorityChange = useCallback((priority: number) => {
+    setPriority(priority);
+  }, []);
+
+  const handleReminderToggle = useCallback((value: boolean) => {
+    setReminderEnabled(value);
+  }, []);
+
+  const handleShowListModal = useCallback(() => {
+    setShowListModal(true);
+  }, []);
+
+  const handleShowGoalModal = useCallback(() => {
+    setShowGoalModal(true);
+  }, []);
+
+  const handleToggleAdvanced = useCallback(() => {
+    setShowAdvancedOptions(!showAdvancedOptions);
+  }, [showAdvancedOptions]);
+
+  const handleClose = useCallback(() => {
+    animateOut(onClose);
+  }, [onClose]);
+
   // Render nothing if not visible
   if (!visible) return null;
 
+  
   return (
     <Modal
       visible={visible}
@@ -463,7 +592,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
       onRequestClose={() => animateOut(onClose)}
     >
       <View style={styles.container}>
-        <TouchableWithoutFeedback onPress={() => animateOut(onClose)}>
+        <TouchableWithoutFeedback onPress={handleClose}>
           <Animated.View
             style={[styles.backdrop, { opacity: backdropOpacity }]}
           />
@@ -482,16 +611,16 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
 
             {/* Header */}
             <View style={styles.header}>
-              <TouchableOpacity onPress={() => animateOut(onClose)}>
+              <TouchableOpacity onPress={handleClose}>
                 <Text style={styles.cancelButton}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>New Task</Text>
+              <Text style={styles.headerTitle}>{isEditMode ? "Edit Task" : "New Task"}</Text>
               <TouchableOpacity
                 onPress={handleSave}
                 disabled={isSaving || taskName.trim() === ""}
               >
                 {isSaving ? (
-                  <Text style={styles.savingButton}>Saving...</Text>
+                  <Text style={styles.savingButton}>{isEditMode ? "Updating..." : "Saving..."}</Text>
                 ) : (
                   <Text
                     style={[
@@ -499,7 +628,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                       taskName.trim() === "" && styles.disabledButton,
                     ]}
                   >
-                    Save
+                    {isEditMode ? "Update" : "Save"}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -520,7 +649,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                 placeholder="Add title"
                 placeholderTextColor="#888"
                 value={taskName}
-                onChangeText={setTaskName}
+                onChangeText={handleTaskNameChange}
               />
 
               {/* Task type selection */}
@@ -532,7 +661,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                       styles.taskTypeButton,
                       taskType === type && styles.taskTypeButtonSelected,
                     ]}
-                    onPress={() => setTaskType(type as "event" | "task")}
+                    onPress={() => handleTaskTypeChange(type as "event" | "task")}
                   >
                     <Text
                       style={[
@@ -561,7 +690,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                   placeholder="Add description"
                   placeholderTextColor="#888"
                   value={description}
-                  onChangeText={setDescription}
+                  onChangeText={handleDescriptionChange}
                   multiline
                 />
               </View>
@@ -569,7 +698,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
               {/* List Selection */}
               <TouchableOpacity
                 style={styles.optionRow}
-                onPress={() => setShowListModal(true)}
+                onPress={handleShowListModal}
               >
                 <Ionicons name="list" size={22} color="#5D87FF" />
                 <View style={styles.optionTextContainer}>
@@ -595,7 +724,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
               {/* Goal Selection */}
               <TouchableOpacity
                 style={styles.optionRow}
-                onPress={() => setShowGoalModal(true)}
+                onPress={handleShowGoalModal}
               >
                 <Ionicons name="flag" size={22} color="#5D87FF" />
                 <View style={styles.optionTextContainer}>
@@ -695,7 +824,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                   thumbColor={reminderEnabled ? "#5D87FF" : "#f4f3f4"}
                   ios_backgroundColor="#d9d9d9"
                   onValueChange={() =>
-                    setReminderEnabled((previousState) => !previousState)
+                    handleReminderToggle(!reminderEnabled)
                   }
                   value={reminderEnabled}
                 />
@@ -704,7 +833,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
               {/* Advanced Options Toggle */}
               <TouchableOpacity
                 style={[styles.optionRow, styles.advancedOptionsToggle]}
-                onPress={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                onPress={handleToggleAdvanced}
               >
                 <Ionicons
                   name={showAdvancedOptions ? "chevron-up" : "chevron-down"}
@@ -736,7 +865,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                         style={styles.inlineInput}
                         placeholder="Add location (optional)"
                         value={location}
-                        onChangeText={setLocation}
+                        onChangeText={handleLocationChange}
                       />
                     </View>
                   </View>
@@ -750,7 +879,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                         style={styles.inlineInput}
                         placeholder="Add attendees separated by commas (optional)"
                         value={attendees}
-                        onChangeText={setAttendees}
+                        onChangeText={handleAttendeesChange}
                       />
                     </View>
                   </View>
@@ -770,7 +899,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                                 priority === 1 ? "#e3f2fd" : "#f5f5f5",
                             },
                           ]}
-                          onPress={() => setPriority(1)}
+                          onPress={() => handlePriorityChange(1)}
                         >
                           <Text
                             style={[
@@ -791,7 +920,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                                 priority === 2 ? "#e3f2fd" : "#f5f5f5",
                             },
                           ]}
-                          onPress={() => setPriority(2)}
+                          onPress={() => handlePriorityChange(2)}
                         >
                           <Text
                             style={[
@@ -812,7 +941,7 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
                                 priority === 3 ? "#e3f2fd" : "#f5f5f5",
                             },
                           ]}
-                          onPress={() => setPriority(3)}
+                          onPress={() => handlePriorityChange(3)}
                         >
                           <Text
                             style={[
@@ -960,7 +1089,9 @@ const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "flex-end",
-    zIndex: 1000,
+    zIndex: 9999,
+    elevation: 1000, // For Android
+    position: 'absolute',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -1252,4 +1383,4 @@ listIconContainer: {
   },
 });
 
-export default AddTaskBottomSheet;
+export default React.memo(AddTaskBottomSheet);

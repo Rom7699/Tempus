@@ -1,4 +1,4 @@
-const { pool } = require('/opt/db');
+const { getPool } = require('/opt/nodejs/db');
 
 exports.handler = async (event) => {
   const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
@@ -14,6 +14,8 @@ exports.handler = async (event) => {
   }
 
   try {
+    const pool = getPool();
+    
     // Get query parameters for filtering
     const queryParams = event.queryStringParameters || {};
     const { goal_type, is_completed } = queryParams;

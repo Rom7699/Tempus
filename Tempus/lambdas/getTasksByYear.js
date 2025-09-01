@@ -1,4 +1,4 @@
-const { pool } = require('/opt/db'); // from Lambda layer (db.js in /opt)
+const { getPool } = require('/opt/nodejs/db'); // from Lambda layer (db.js in /opt)
 
 exports.handler = async (event) => {
   console.log("Event received:", JSON.stringify(event));
@@ -31,6 +31,8 @@ exports.handler = async (event) => {
   }
 
   try {
+    const pool = getPool();
+    
     const result = await pool.query(
       `SELECT * FROM tasks 
        WHERE user_id = $1 AND 

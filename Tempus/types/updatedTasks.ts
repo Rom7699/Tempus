@@ -48,7 +48,7 @@ export const baseTaskSchema = z.object({
     .optional(),
 
   is_ai_generated: z.boolean().optional(),
-  is_task: z.boolean().optional(),
+  is_event: z.boolean().optional(),
   is_completed: z.boolean().optional(),
 });
 

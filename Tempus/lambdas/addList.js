@@ -1,7 +1,9 @@
-const { pool } = require('/opt/db'); // from DB layer (db.js in /opt)
+const { getPool } = require('/opt/nodejs/db'); // from DB layer (db.js in /opt)
 
 exports.handler = async (event) => {
   try {
+    const pool = getPool();
+    
     const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
     if (!userId) {
       return {

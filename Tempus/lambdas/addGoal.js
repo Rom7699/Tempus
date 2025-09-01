@@ -1,7 +1,9 @@
-const { pool } = require('/opt/db');
+const { getPool } = require('/opt/nodejs/db');
 
 exports.handler = async (event) => {
   try {
+    const pool = getPool();
+    
     console.log("Received event:", JSON.stringify(event, null, 2));
     const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
     if (!userId) {

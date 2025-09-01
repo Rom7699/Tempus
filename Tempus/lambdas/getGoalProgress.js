@@ -1,4 +1,4 @@
-const { pool } = require('/opt/db');
+const { getPool } = require('/opt/nodejs/db');
 
 exports.handler = async (event) => {
   const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
@@ -33,6 +33,8 @@ exports.handler = async (event) => {
   }
 
   try {
+    const pool = getPool();
+    
     // Get goal details with progress
     const goalResult = await pool.query(
       `SELECT 

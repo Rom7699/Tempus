@@ -15,11 +15,11 @@ export interface BaseTask {
   task_reminder?: boolean;
   task_location?: string;
   task_attendees?: string[];
-  task_priority?: number;
+  task_priority?: number; // 1-low, 2-medium, 3-high
   task_energy_level?: number;
 
   is_ai_generated?: boolean;
-  is_task?: boolean;
+  is_event?: boolean;
   is_completed?: boolean; // Nullable to allow for uninitialized state
 }
 
