@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,53 +20,13 @@ import { Goal, BaseGoal } from '../types/goals';
 import { Task } from '../types/tasks';
 import SimpleProgressCircle from '../components/SimpleProgressCircle';
 import AddGoalModal from '../components/AddGoalModal';
+import TaskDetailItem from '../components/NewTaskItem';
+import DisplayTaskModal from '../components/DisplayTaskModal';
 import { createGradient } from '../utils/colorUtils';
 
 const { width } = Dimensions.get('window');
 
 
-const TaskItem: React.FC<{ task: Task; onToggle: (taskId: string) => void }> = ({ 
-  task, 
-  onToggle 
-}) => {
-  return (
-    <TouchableOpacity 
-      style={styles.taskItem} 
-      onPress={() => onToggle(task.task_id)}
-    >
-      <View style={styles.taskContent}>
-        <TouchableOpacity 
-          style={[styles.checkbox, task.is_completed && styles.checkboxCompleted]}
-          onPress={() => onToggle(task.task_id)}
-        >
-          {task.is_completed && (
-            <Ionicons name="checkmark" size={16} color="#fff" />
-          )}
-        </TouchableOpacity>
-        <View style={styles.taskTextContainer}>
-          <Text style={[styles.taskTitle, task.is_completed && styles.taskTitleCompleted]}>
-            {task.task_name}
-          </Text>
-          <Text style={styles.taskDate}>
-            {task.task_start_date ? new Date(task.task_start_date).toLocaleDateString() : 'No date'}
-          </Text>
-        </View>
-      </View>
-      <Text style={[styles.taskPriority, { color: getPriorityColor(task.task_priority) }]}>
-        {task.task_priority}
-      </Text>
-    </TouchableOpacity>
-  );
-};
-
-const getPriorityColor = (priority: number | undefined): string => {
-  switch (priority) {
-    case 0: return '#FF6B6B';
-    case 1: return '#FFB347';
-    case 2: return '#4ECDC4';
-    default: return '#666';
-  }
-};
 
 export default function GoalDetailsScreen() {
   const { goalId } = useLocalSearchParams<{ goalId: string }>();
@@ -78,6 +38,25 @@ export default function GoalDetailsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [taskModalVisible, setTaskModalVisible] = useState(false);
+
+  // Sort tasks: incomplete tasks first (sorted by date, latest first), then completed tasks
+  const sortedTasks = useMemo(() => {
+    return [...tasks].sort((a, b) => {
+      // First, separate completed and incomplete tasks
+      if (a.is_completed !== b.is_completed) {
+        return a.is_completed ? 1 : -1; // Completed tasks go to bottom
+      }
+      
+      // Within each group, sort by date (latest first)
+      const dateA = a.task_start_date ? new Date(a.task_start_date).getTime() : 0;
+      const dateB = b.task_start_date ? new Date(b.task_start_date).getTime() : 0;
+      
+      // Latest dates first (descending order)
+      return dateB - dateA;
+    });
+  }, [tasks]);
 
   useEffect(() => {
     console.log('GoalDetailsScreen - Received goalId:', goalId);
@@ -143,11 +122,14 @@ export default function GoalDetailsScreen() {
             : t
         )
       );
-
-      await loadGoalData();
     } catch (error: any) {
       Alert.alert('Error', 'Failed to update task');
     }
+  };
+
+  const handleTaskPress = (task: Task) => {
+    setSelectedTask(task);
+    setTaskModalVisible(true);
   };
 
   const handleMarkGoalComplete = async () => {
@@ -421,20 +403,22 @@ export default function GoalDetailsScreen() {
           </View>
         </View>
 
-        {tasks.length > 0 && (
+        {sortedTasks.length > 0 && (
           <View style={styles.tasksSection}>
-            <Text style={styles.sectionTitle}>Linked Tasks ({tasks.length})</Text>
-            {tasks.map((task) => (
-              <TaskItem
+            <Text style={styles.sectionTitle}>Linked Tasks ({sortedTasks.length})</Text>
+            {sortedTasks.map((task) => (
+              <TaskDetailItem
                 key={task.task_id}
                 task={task}
-                onToggle={handleTaskToggle}
+                onPress={handleTaskPress}
+                showCompleteButton={true}
+                onToggleComplete={handleTaskToggle}
               />
             ))}
           </View>
         )}
 
-        {tasks.length === 0 && (
+        {sortedTasks.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="list-outline" size={48} color="#ccc" />
             <Text style={styles.emptyStateTitle}>No Linked Tasks</Text>
@@ -499,6 +483,24 @@ export default function GoalDetailsScreen() {
           onSave={handleSaveEditedGoal}
           goalType={goal.goal_type}
           initialData={goal}
+        />
+      )}
+
+      {/* Task Display Modal */}
+      {selectedTask && (
+        <DisplayTaskModal
+          visible={taskModalVisible}
+          task={selectedTask}
+          onClose={() => {
+            setTaskModalVisible(false);
+            setSelectedTask(null);
+          }}
+          onUpdate={async () => {
+            await loadGoalData();
+          }}
+          onDelete={async () => {
+            await loadGoalData();
+          }}
         />
       )}
     </SafeAreaView>
@@ -712,55 +714,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 16,
-  },
-  taskItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  taskContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  checkboxCompleted: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-  },
-  taskTextContainer: {
-    flex: 1,
-  },
-  taskTitle: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
-  taskTitleCompleted: {
-    textDecorationLine: 'line-through',
-    color: '#999',
-  },
-  taskDate: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  taskPriority: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
   },
   emptyState: {
     alignItems: 'center',
