@@ -48,6 +48,7 @@ interface ApiContextType {
   updateList: (listId: string, updateData: Partial<BaseList>) => Promise<AxiosResponse<any>>;
   deleteList: (listId: string) => Promise<AxiosResponse<any>>;
   unlinkAllTasksFromList: (listId: string) => Promise<AxiosResponse<any>>;
+  unlinkTasksFromList: (listId: string, taskIds: string[]) => Promise<AxiosResponse<any>>;
   getLists: () => Promise<{ message: string; listsArr: List[] }>;
 
   // Goals
@@ -392,6 +393,21 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     }
   };
 
+  const unlinkTasksFromListImpl = async (
+    listId: string,
+    taskIds: string[]
+  ): Promise<AxiosResponse<any>> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await axios.post(`${apiBase}/list/${listId}/unlink-tasks`, { taskIds }, { headers });
+      console.log("Selected tasks unlinked from list successfully");
+      return response;
+    } catch (error: any) {
+      console.error("Error unlinking selected tasks from list:", error);
+      throw new Error(error.response?.data?.message || "Failed to unlink selected tasks from list");
+    }
+  };
+
   const getListsImpl = async (): Promise<{
     message: string;
     listsArr: List[];
@@ -624,6 +640,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     updateList: updateListImpl,
     deleteList: deleteListImpl,
     unlinkAllTasksFromList: unlinkAllTasksFromListImpl,
+    unlinkTasksFromList: unlinkTasksFromListImpl,
     getLists: getListsImpl,
 
     // Goals

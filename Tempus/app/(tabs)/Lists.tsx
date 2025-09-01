@@ -17,6 +17,7 @@ import { List, BaseList } from "@/types/lists";
 import { Task, BaseTask, UpdateTaskInput } from "@/types/tasks";
 import AddListModal from "@/components/AddListModal";
 import EditListModal from "@/components/EditListModal";
+import UnlinkTasksModal from "@/components/UnlinkTasksModal";
 import TaskDetailItem from "../../components/NewTaskItem";
 import AddTaskBottomSheet from "@/components/AddTaskBottomSheet";
 import DisplayTaskModal from "@/components/DisplayTaskModal";
@@ -54,24 +55,21 @@ const ListItem: React.FC<{
     >
       <Text style={styles.listIcon}>{list.list_icon}</Text>
       <Text style={styles.listName}>{list.list_name}</Text>
-      <View style={styles.listItemActions}>
-        <TouchableOpacity
-          ref={(ref) => {
-            // Store reference for position calculation
-            if (ref) {
-              (ref as any)._list = list;
-            }
-          }}
-          style={styles.menuButton}
-          onPress={(e) => {
-            e.stopPropagation(); // Prevent triggering the list press
-            onMenu(e);
-          }}
-        >
-          <Ionicons name="ellipsis-horizontal" size={20} color="#666" />
-        </TouchableOpacity>
-        <Ionicons name="chevron-forward" size={24} color="#CCCCCC" />
-      </View>
+      <TouchableOpacity
+        ref={(ref) => {
+          // Store reference for position calculation
+          if (ref) {
+            (ref as any)._list = list;
+          }
+        }}
+        style={styles.menuButton}
+        onPress={(e) => {
+          e.stopPropagation(); // Prevent triggering the list press
+          onMenu(e);
+        }}
+      >
+        <Ionicons name="ellipsis-vertical" size={20} color="#666" />
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 };
@@ -87,7 +85,7 @@ const ListsScreen: React.FC = () => {
     addList,
     updateList,
     deleteList,
-    unlinkAllTasksFromList,
+    unlinkTasksFromList,
     addTask,
     deleteTask,
     updateTask,
@@ -107,6 +105,7 @@ const ListsScreen: React.FC = () => {
   const [listMenuVisible, setListMenuVisible] = useState(false);
   const [menuList, setMenuList] = useState<List | null>(null);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [unlinkModalVisible, setUnlinkModalVisible] = useState(false);
 
   // Load lists when component mounts
   useEffect(() => {
@@ -369,8 +368,8 @@ const ListsScreen: React.FC = () => {
     }
   };
 
-  // Handle unlinking all tasks from the current list
-  const handleUnlinkAllTasks = async () => {
+  // Handle opening the unlink tasks modal
+  const handleShowUnlinkModal = () => {
     if (!selectedList) return;
 
     const taskCount = tasksForList.length;
@@ -379,28 +378,22 @@ const ListsScreen: React.FC = () => {
       return;
     }
 
-    Alert.alert(
-      "Unlink All Tasks",
-      `Are you sure you want to unlink all ${taskCount} task(s) from "${selectedList.list_name}"?\n\nTasks will not be deleted, they will just be unlinked from this list.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Unlink All",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const response = await unlinkAllTasksFromList(selectedList.list_id.toString());
-              Alert.alert("Success", "All tasks have been unlinked from this list.");
-              // Refresh the tasks for the current list to show the empty list
-              await refreshTasksForCurrentList();
-            } catch (error: any) {
-              console.error("Error unlinking tasks:", error);
-              Alert.alert("Error", error.message || "Failed to unlink tasks. Please try again.");
-            }
-          },
-        },
-      ]
-    );
+    setUnlinkModalVisible(true);
+  };
+
+  // Handle unlinking selected tasks
+  const handleUnlinkTasks = async (taskIds: string[]) => {
+    if (!selectedList) return;
+
+    try {
+      await unlinkTasksFromList(selectedList.list_id.toString(), taskIds);
+      Alert.alert("Success", `${taskIds.length} task(s) have been unlinked from this list.`);
+      // Refresh the tasks for the current list to show the updated list
+      await refreshTasksForCurrentList();
+    } catch (error: any) {
+      console.error("Error unlinking tasks:", error);
+      throw error; // Re-throw to let the modal handle the error display
+    }
   };
 
   return (
@@ -425,15 +418,15 @@ const ListsScreen: React.FC = () => {
             <Text style={styles.backButtonText}>Back to Lists</Text>
           </TouchableOpacity>
 
-          {/* Unlink all tasks button - only show if there are tasks */}
+          {/* Unlink tasks button - only show if there are tasks */}
           {tasksForList.length > 0 && (
             <TouchableOpacity
               style={styles.unlinkAllButton}
-              onPress={handleUnlinkAllTasks}
+              onPress={handleShowUnlinkModal}
             >
               <Ionicons name="unlink" size={20} color="#FF6B35" />
               <Text style={styles.unlinkAllButtonText}>
-                Unlink All Tasks ({tasksForList.length})
+                Unlink Tasks ({tasksForList.length})
               </Text>
             </TouchableOpacity>
           )}
@@ -603,6 +596,17 @@ const ListsScreen: React.FC = () => {
           list={menuList}
         />
       )}
+
+      {/* Unlink Tasks Modal */}
+      {selectedList && (
+        <UnlinkTasksModal
+          visible={unlinkModalVisible}
+          onClose={() => setUnlinkModalVisible(false)}
+          onUnlink={handleUnlinkTasks}
+          tasks={tasksForList}
+          list={selectedList}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -626,10 +630,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f0f0f0",
+    padding: 8,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -695,15 +696,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     flex: 1,
   },
-  listItemActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
   menuButton: {
     padding: 8,
-    borderRadius: 16,
-    backgroundColor: "rgba(102, 102, 102, 0.1)",
+    marginLeft: "auto",
   },
   emptyContainer: {
     flex: 1,
