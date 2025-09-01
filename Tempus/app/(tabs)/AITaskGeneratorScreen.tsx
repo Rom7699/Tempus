@@ -231,6 +231,9 @@ export default function AITaskGeneratorScreen() {
         uploadedHealthData ? "Uploaded file" : "Default data"
       );
 
+      const userEmail = await AuthService.getUserEmail();
+      const userId = userEmail || "unknown-user";
+
       // Call Lambda function to generate AI schedule and save to database
       const response = await fetch(
         "https://sazlhtbr90.execute-api.us-east-1.amazonaws.com/TempusHealthHandler",
@@ -245,6 +248,7 @@ export default function AITaskGeneratorScreen() {
             monthly_avg: healthData.monthly_avg,
             analysis: healthData.analysis,
             tasks: tasks,
+            userId: userId,
           }),
         }
       );

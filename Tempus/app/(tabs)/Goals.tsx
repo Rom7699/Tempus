@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,11 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Animated,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import SimpleProgressCircle from '../../components/SimpleProgressCircle';
 
-const { width } = Dimensions.get('window');
 
 // Types
 interface Goal {
@@ -35,124 +33,6 @@ interface GoalCardProps {
   onPress: () => void;
 }
 
-// Progress Circle Component
-const ProgressCircle: React.FC<{
-  progress: number;
-  size: number;
-  strokeWidth: number;
-  color: string;
-}> = ({ progress, size, strokeWidth, color }) => {
-  const animatedProgress = new Animated.Value(0);
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-
-  useEffect(() => {
-    Animated.timing(animatedProgress, {
-      toValue: progress,
-      duration: 1000,
-      useNativeDriver: false,
-    }).start();
-  }, [progress]);
-
-  return (
-    <View style={{ width: size, height: size }}>
-      <svg width={size} height={size} style={{ position: 'absolute' }}>
-        {/* Background circle */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="#f0f0f0"
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        {/* Progress circle */}
-        <Animated.View>
-          {animatedProgress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, circumference],
-          })}
-        </Animated.View>
-      </svg>
-      <View style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}>
-        <Text style={{ fontSize: size * 0.15, fontWeight: 'bold', color }}>
-          {Math.round(progress * 100)}%
-        </Text>
-      </View>
-    </View>
-  );
-};
-
-// Custom Progress Circle (simplified for React Native)
-const SimpleProgressCircle: React.FC<{
-  progress: number;
-  size: number;
-  color: string;
-  current: number;
-  target: number;
-}> = ({ progress, size, color, current, target }) => {
-  const strokeWidth = 6;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const progressOffset = circumference - (progress * circumference);
-
-  return (
-    <View style={{ width: size, height: size, position: 'relative' }}>
-      {/* Background circle */}
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          borderWidth: strokeWidth,
-          borderColor: '#e2e0e0ff',
-          position: 'absolute',
-        }}
-      />
-      {/* Progress overlay */}
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          borderWidth: strokeWidth,
-          borderColor: 'transparent',
-          borderTopColor: color,
-          borderRightColor: progress > 0.25 ? color : 'transparent',
-          borderBottomColor: progress > 0.5 ? color : 'transparent',
-          borderLeftColor: progress > 0.75 ? color : 'transparent',
-          position: 'absolute',
-          transform: [{ rotate: '-90deg' }],
-        }}
-      />
-      {/* Center content */}
-      <View style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}>
-        <Text style={{ fontSize: size * 0.2, fontWeight: 'bold', color }}>
-          {current}
-        </Text>
-        <Text style={{ fontSize: size * 0.12, color: '#666' }}>
-          of {target}
-        </Text>
-      </View>
-    </View>
-  );
-};
 
 // Goal Card Component
 const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress }) => {
@@ -195,7 +75,7 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress }) => {
             </View>
             <SimpleProgressCircle
               progress={progress}
-              size={60}
+              size={90}
               color="#fff"
               current={goal.currentCount}
               target={goal.targetCount}
