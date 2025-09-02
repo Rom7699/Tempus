@@ -35,8 +35,8 @@ exports.handler = async (event) => {
       'goal_name', 'goal_description', 'goal_target', 
       'goal_progress', 'goal_type', 'goal_color', 
       'goal_icon', 'goal_start_date', 'goal_end_date',
-      'goal_cycle_duration', 'goal_selected_days', 'is_completed',
-      'is_cycling', 'current_cycle_start', 'current_cycle_end', 'cycles_completed'
+      'goal_cycle_duration', 'goal_selected_days', 'is_completed', 'is_active',
+      'is_cycling', 'current_cycle_start', 'current_cycle_end', 'cycles_completed', 'total_cycles'
     ];
 
     const updates = [];
@@ -132,6 +132,8 @@ exports.handler = async (event) => {
         values.push(cycleEndDate.toISOString().split('T')[0]);
         updates.push(`cycles_completed = $${index++}`);
         values.push(0); // Reset cycles when recalculating
+        updates.push(`total_cycles = $${index++}`);
+        values.push(0); // Reset total cycles when recalculating
       }
     }
 

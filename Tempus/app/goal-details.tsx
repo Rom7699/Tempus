@@ -123,6 +123,12 @@ export default function GoalDetailsScreen() {
   };
 
   const handleTaskToggle = async (taskId: string) => {
+    // Don't allow task progress updates for inactive goals
+    if (goal && goal.is_active === false) {
+      Alert.alert('Goal Inactive', 'This goal is currently inactive. Activate it first to make progress.');
+      return;
+    }
+
     try {
       const task = tasks.find(t => t.task_id === taskId);
       if (!task) return;
@@ -161,6 +167,27 @@ export default function GoalDetailsScreen() {
       Alert.alert(
         'Success', 
         `Goal marked as ${!goal.is_completed ? 'completed' : 'incomplete'}!`
+      );
+      
+      await loadGoalData();
+      setShowMenu(false);
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to update goal status');
+    }
+  };
+
+  const handleToggleGoalActive = async () => {
+    if (!goal) return;
+    
+    try {
+      await updateGoal({
+        goal_id: goal.goal_id,
+        is_active: !goal.is_active,
+      });
+      
+      Alert.alert(
+        'Success', 
+        `Goal marked as ${!goal.is_active ? 'active' : 'inactive'}!`
       );
       
       await loadGoalData();
@@ -451,9 +478,9 @@ export default function GoalDetailsScreen() {
               {goal.is_cycling && goal.cycles_completed !== undefined && (
                 <View style={styles.infoRow}>
                   <Ionicons name="trophy-outline" size={20} color="#666" />
-                  <Text style={styles.infoLabel}>Cycles Completed</Text>
+                  <Text style={styles.infoLabel}>Cycle Success</Text>
                   <Text style={[styles.infoValue, { color: goal.cycles_completed > 0 ? '#4CAF50' : '#999' }]}>
-                    {goal.cycles_completed}
+                    {goal.cycles_completed}/{goal.total_cycles || 0} ({goal.total_cycles > 0 ? Math.round((goal.cycles_completed / goal.total_cycles) * 100) : 0}%)
                   </Text>
                 </View>
               )}
@@ -479,7 +506,7 @@ export default function GoalDetailsScreen() {
                 key={task.task_id}
                 task={task}
                 onPress={handleTaskPress}
-                showCompleteButton={true}
+                showCompleteButton={goal?.is_active !== false}
                 onToggleComplete={handleTaskToggle}
               />
             ))}
@@ -546,6 +573,23 @@ export default function GoalDetailsScreen() {
                 goal?.is_completed && { color: "#4CAF50" }
               ]}>
                 {goal?.is_completed ? 'Mark as Incomplete' : 'Mark as Complete'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={handleToggleGoalActive}
+            >
+              <Ionicons 
+                name={goal?.is_active ? "pause-circle-outline" : "play-circle-outline"} 
+                size={20} 
+                color={goal?.is_active ? "#FF9800" : "#2196F3"} 
+              />
+              <Text style={[
+                styles.menuItemText,
+                { color: goal?.is_active ? "#FF9800" : "#2196F3" }
+              ]}>
+                {goal?.is_active ? 'Mark as Inactive' : 'Mark as Active'}
               </Text>
             </TouchableOpacity>
 

@@ -1,5 +1,25 @@
 // Utility function to check and reset a goal's cycle if needed
 const checkAndResetGoalCycle = async (pool, goal) => {
+  // Check if goal should be marked as inactive (past end date)
+  if (goal.goal_end_date && goal.is_active !== false) {
+    const today = new Date();
+    const endDate = new Date(goal.goal_end_date);
+    endDate.setHours(23, 59, 59, 999); // End of end date
+    
+    if (today > endDate) {
+      console.log(`[CheckGoalCycle] Deactivating goal ${goal.goal_id} (${goal.goal_name}) - past end date`);
+      const deactivateQuery = `
+        UPDATE goals 
+        SET is_active = false
+        WHERE goal_id = $1
+        RETURNING *
+      `;
+      
+      const result = await pool.query(deactivateQuery, [goal.goal_id]);
+      goal = result.rows[0]; // Update the goal object
+    }
+  }
+
   if (!goal.is_cycling || !goal.current_cycle_end) {
     return goal; // Not a cycling goal, return as-is
   }
@@ -74,13 +94,17 @@ const checkAndResetGoalCycle = async (pool, goal) => {
   if (shouldReset) {
     console.log(`[CheckGoalCycle] Resetting goal ${goal.goal_id} (${goal.goal_name})`);
     
+    // Check if the previous cycle was successful (target met)
+    const wasSuccessful = goal.goal_progress >= goal.goal_target;
+    
     // Reset the goal progress and update cycle dates
     const updateQuery = `
       UPDATE goals 
       SET goal_progress = 0,
           current_cycle_start = $2,
           current_cycle_end = $3,
-          cycles_completed = COALESCE(cycles_completed, 0) + 1,
+          cycles_completed = COALESCE(cycles_completed, 0) + $4,
+          total_cycles = COALESCE(total_cycles, 0) + 1,
           is_completed = false
       WHERE goal_id = $1
       RETURNING *
@@ -89,10 +113,11 @@ const checkAndResetGoalCycle = async (pool, goal) => {
     const result = await pool.query(updateQuery, [
       goal.goal_id,
       newCycleStart,
-      newCycleEnd
+      newCycleEnd,
+      wasSuccessful ? 1 : 0 // Only increment cycles_completed if target was met
     ]);
     
-    console.log(`[CheckGoalCycle] Successfully reset goal ${goal.goal_id}`);
+    console.log(`[CheckGoalCycle] Successfully reset goal ${goal.goal_id} - Previous cycle ${wasSuccessful ? 'successful' : 'unsuccessful'}`);
     return result.rows[0]; // Return the updated goal
   }
 

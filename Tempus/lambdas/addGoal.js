@@ -105,8 +105,10 @@ exports.handler = async (event) => {
       current_cycle_start: currentCycleStart,
       current_cycle_end: currentCycleEnd,
       cycles_completed: 0,
+      total_cycles: 0,
       created_at: new Date().toISOString(),
-      is_completed: false
+      is_completed: false,
+      is_active: true
     };
 
     const query = `
@@ -114,8 +116,8 @@ exports.handler = async (event) => {
         user_id, goal_name, goal_description, goal_target, goal_progress,
         goal_type, goal_color, goal_icon, goal_start_date, goal_end_date, 
         goal_cycle_duration, goal_selected_days, is_cycling, current_cycle_start,
-        current_cycle_end, cycles_completed, created_at, is_completed
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        current_cycle_end, cycles_completed, total_cycles, created_at, is_completed, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       RETURNING *
     `;
 
@@ -137,8 +139,10 @@ exports.handler = async (event) => {
       goal.current_cycle_start,
       goal.current_cycle_end,
       goal.cycles_completed,
+      goal.total_cycles,
       goal.created_at,
-      goal.is_completed
+      goal.is_completed,
+      goal.is_active
     ]);
     console.log("Query finished");
 
