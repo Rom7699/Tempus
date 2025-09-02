@@ -22,8 +22,9 @@ exports.handler = async (event) => {
       goal_color,
       goal_icon,
       goal_start_date,
-      goal_target_days,
-      goal_selected_days
+      goal_cycle_duration,
+      goal_selected_days,
+      is_cycling
     } = body;
 
     const requiredFields = ['goal_name', 'goal_target', 'goal_type', 'goal_start_date'];
@@ -44,22 +45,47 @@ exports.handler = async (event) => {
       };
     }
 
-    // Calculate end date if goal_target_days is provided
+    // Calculate end date if goal_cycle_duration is provided
     let goalEndDate = null;
-    if (goal_target_days && goal_target_days !== 'forever') {
+    if (goal_cycle_duration && goal_cycle_duration !== 'forever') {
       const startDate = new Date(goal_start_date);
       const endDate = new Date(startDate);
       
       if (goal_type === 'daily') {
-        endDate.setDate(startDate.getDate() + goal_target_days - 1);
+        endDate.setDate(startDate.getDate() + goal_cycle_duration - 1);
       } else if (goal_type === 'weekly') {
-        endDate.setDate(startDate.getDate() + (goal_target_days * 7) - 1);
+        endDate.setDate(startDate.getDate() + (goal_cycle_duration * 7) - 1);
       } else if (goal_type === 'monthly') {
-        endDate.setMonth(startDate.getMonth() + goal_target_days);
+        endDate.setMonth(startDate.getMonth() + goal_cycle_duration);
         endDate.setDate(endDate.getDate() - 1);
       }
       
       goalEndDate = endDate.toISOString().split('T')[0];
+    }
+
+    // Calculate current cycle dates if cycling is enabled
+    let currentCycleStart = goal_start_date;
+    let currentCycleEnd = null;
+    
+    if (is_cycling) {
+      const startDate = new Date(goal_start_date);
+      const cycleEndDate = new Date(startDate);
+      
+      if (goal_type === 'daily') {
+        // For daily goals, each cycle is 1 day long - end at end of start day
+        cycleEndDate.setDate(startDate.getDate());
+        cycleEndDate.setHours(23, 59, 59, 999); // End of day
+        currentCycleEnd = cycleEndDate.toISOString().split('T')[0];
+      } else if (goal_type === 'weekly') {
+        // Weekly cycle is exactly 7 days long (1 week)
+        cycleEndDate.setDate(startDate.getDate() + 6); // 7 days total (0-6)
+        currentCycleEnd = cycleEndDate.toISOString().split('T')[0];
+      } else if (goal_type === 'monthly') {
+        // Monthly cycle is exactly 1 month long
+        cycleEndDate.setMonth(startDate.getMonth() + 1);
+        cycleEndDate.setDate(cycleEndDate.getDate() - 1);
+        currentCycleEnd = cycleEndDate.toISOString().split('T')[0];
+      }
     }
 
     const goal = {
@@ -73,8 +99,12 @@ exports.handler = async (event) => {
       goal_icon: goal_icon || 'flag',
       goal_start_date,
       goal_end_date: goalEndDate,
-      goal_target_days: goal_target_days === 'forever' ? null : goal_target_days,
+      goal_cycle_duration: goal_cycle_duration === 'forever' ? null : goal_cycle_duration,
       goal_selected_days: goal_selected_days || null,
+      is_cycling: is_cycling || false,
+      current_cycle_start: currentCycleStart,
+      current_cycle_end: currentCycleEnd,
+      cycles_completed: 0,
       created_at: new Date().toISOString(),
       is_completed: false
     };
@@ -83,8 +113,9 @@ exports.handler = async (event) => {
       INSERT INTO goals (
         user_id, goal_name, goal_description, goal_target, goal_progress,
         goal_type, goal_color, goal_icon, goal_start_date, goal_end_date, 
-        goal_target_days, goal_selected_days, created_at, is_completed
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        goal_cycle_duration, goal_selected_days, is_cycling, current_cycle_start,
+        current_cycle_end, cycles_completed, created_at, is_completed
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *
     `;
 
@@ -100,8 +131,12 @@ exports.handler = async (event) => {
       goal.goal_icon,
       goal.goal_start_date,
       goal.goal_end_date,
-      goal.goal_target_days,
+      goal.goal_cycle_duration,
       goal.goal_selected_days || null,
+      goal.is_cycling,
+      goal.current_cycle_start,
+      goal.current_cycle_end,
+      goal.cycles_completed,
       goal.created_at,
       goal.is_completed
     ]);

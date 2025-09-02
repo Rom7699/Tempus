@@ -39,7 +39,7 @@ exports.handler = async (event) => {
     const goalResult = await pool.query(
       `SELECT 
         goal_id, goal_name, goal_type, goal_target, goal_progress, 
-        goal_start_date, goal_end_date, goal_target_days, goal_selected_days,
+        goal_start_date, goal_end_date, goal_cycle_duration, goal_selected_days,
         is_completed, created_at
        FROM goals 
        WHERE user_id = $1 AND goal_id = $2`,

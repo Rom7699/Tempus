@@ -401,6 +401,35 @@ export default function GoalDetailsScreen() {
               {goal.is_completed ? 'Completed' : 'In Progress'}
             </Text>
           </View>
+          {goal.is_cycling && (
+            <>
+              <View style={styles.infoRow}>
+                <Ionicons name="refresh-outline" size={20} color="#666" />
+                <Text style={styles.infoLabel}>Cycling</Text>
+                <Text style={[styles.infoValue, { color: '#2196F3' }]}>
+                  {goal.goal_type.charAt(0).toUpperCase() + goal.goal_type.slice(1)}
+                </Text>
+              </View>
+              {goal.current_cycle_start && goal.current_cycle_end && (
+                <View style={styles.infoRow}>
+                  <Ionicons name="time-outline" size={20} color="#666" />
+                  <Text style={styles.infoLabel}>Current Cycle</Text>
+                  <Text style={styles.infoValue}>
+                    {new Date(goal.current_cycle_start).toLocaleDateString()} - {new Date(goal.current_cycle_end).toLocaleDateString()}
+                  </Text>
+                </View>
+              )}
+              {goal.is_cycling && goal.cycles_completed !== undefined && (
+                <View style={styles.infoRow}>
+                  <Ionicons name="trophy-outline" size={20} color="#666" />
+                  <Text style={styles.infoLabel}>Cycles Completed</Text>
+                  <Text style={[styles.infoValue, { color: goal.cycles_completed > 0 ? '#4CAF50' : '#999' }]}>
+                    {goal.cycles_completed}
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
         </View>
 
         {sortedTasks.length > 0 && (

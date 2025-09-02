@@ -1,4 +1,5 @@
 const { getPool } = require('/opt/nodejs/db');
+const { checkAndResetGoalCycle } = require('/opt/nodejs/checkGoalCycle');
 
 exports.handler = async (event) => {
   const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
@@ -74,10 +75,15 @@ exports.handler = async (event) => {
     };
 
     // Process goal data to ensure arrays are properly formatted
-    const processedGoals = result.rows.map(goal => ({
+    let processedGoals = result.rows.map(goal => ({
       ...goal,
       goal_selected_days: ensureArray(goal.goal_selected_days)
     }));
+
+    // Check and reset cycles for all goals
+    processedGoals = await Promise.all(
+      processedGoals.map(goal => checkAndResetGoalCycle(pool, goal))
+    );
 
     console.log("Query result:", processedGoals.length, "goals found");
     

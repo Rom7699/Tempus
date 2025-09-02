@@ -58,10 +58,18 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
                 <Text style={styles.goalTitle}>{goal.goal_name}</Text>
                 <View style={styles.goalMetaContainer}>
                   <Text style={styles.goalPeriod}>{goal.goal_type}</Text>
-                  {goal.goal_end_date && (
-                    <Text style={styles.goalEndDate}>
-                      • Ends {new Date(goal.goal_end_date).toLocaleDateString()}
-                    </Text>
+                  {goal.is_cycling && (
+                    <View style={styles.cycleIndicator}>
+                      <Ionicons name="refresh-circle" size={12} color="rgba(255, 255, 255, 0.8)" />
+                      <Text style={styles.cycleText}>cycling</Text>
+                      {goal.current_cycle_start && goal.current_cycle_end && (
+                        <View style={styles.cycleRangeContainer}>
+                          <Text style={styles.cycleRange}>
+                            ({new Date(goal.current_cycle_start).toLocaleDateString()} - {new Date(goal.current_cycle_end).toLocaleDateString()})
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   )}
                 </View>
               </View>
@@ -79,6 +87,11 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
           
           <View style={styles.goalFooter}>
             <View style={styles.progressContainer}>
+              <View style={styles.progressTextRow}>
+                <Text style={styles.progressText}>
+                  {goal.goal_progress} / {goal.goal_target} completed
+                </Text>
+              </View>
               <View style={styles.progressBar}>
                 <View 
                   style={[
@@ -88,9 +101,14 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
                 />
               </View>
               <View style={styles.footerRow}>
-                <Text style={styles.progressText}>
-                  {goal.goal_progress} / {goal.goal_target} completed
-                </Text>
+                <View style={styles.endDateInfo}>
+                  <Text style={styles.goalEndText}>
+                    {goal.goal_end_date ? 
+                      <>Ends {new Date(goal.goal_end_date).toLocaleDateString()}</> : 
+                      <>Forever <Ionicons name="infinite-outline" size={11} color="rgba(255, 255, 255, 0.6)" /></>
+                    }
+                  </Text>
+                </View>
                 {goal.goal_progress < goal.goal_target && !goal.is_completed && (
                   <TouchableOpacity 
                     style={styles.incrementButton} 
@@ -223,8 +241,8 @@ const GoalsScreen: React.FC = () => {
   const handleAddGoal = async (goalData: BaseGoal) => {
     try {
       await addGoal(goalData);
+      // Don't close modal here - let AddGoalModal handle the closing animation
       Alert.alert('Success', 'Goal created successfully!');
-      setShowAddGoalModal(false);
     } catch (error: any) {
       throw new Error(error.message || 'Failed to create goal');
     }
@@ -538,10 +556,25 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     textTransform: 'capitalize',
   },
+  cycleIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 6,
+  },
+  cycleText: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginLeft: 2,
+  },
+  endDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 6,
+  },
   goalEndDate: {
     fontSize: 11,
     color: 'rgba(255, 255, 255, 0.6)',
-    marginLeft: 4,
+    marginLeft: 2,
   },
   goalDescription: {
     fontSize: 14,
@@ -670,6 +703,27 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     fontWeight: '600',
     marginLeft: 4,
+  },
+  progressTextRow: {
+    marginBottom: 8,
+  },
+  endDateInfo: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  goalEndText: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 6,
+    marginBottom: -4,
+    marginLeft: 4,
+  },
+  cycleRangeContainer: {
+    marginLeft: 4,
+  },
+  cycleRange: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
 });
 

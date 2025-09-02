@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   Dimensions,
   Platform,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,7 +25,7 @@ interface AddGoalModalProps {
   visible: boolean;
   onClose: () => void;
   onSave: (goalData: BaseGoal) => Promise<void>;
-  goalType: 'daily' | 'weekly' | 'monthly';
+  goalType?: 'daily' | 'weekly' | 'monthly'; // Optional, can be selected in modal
   initialData?: any; // For editing existing goals
 }
 
@@ -40,6 +41,7 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
   // Form state
+  const [selectedGoalType, setSelectedGoalType] = useState<'daily' | 'weekly' | 'monthly'>(goalType || 'daily');
   const [goalName, setGoalName] = useState('');
   const [goalDescription, setGoalDescription] = useState('');
   const [goalTarget, setGoalTarget] = useState('1');
@@ -49,6 +51,9 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Default: weekdays
   const [goalTargetDays, setGoalTargetDays] = useState<number | 'forever' | 'custom'>('forever');
   const [customTargetDays, setCustomTargetDays] = useState('');
+  const [isCycling, setIsCycling] = useState(false);
+  const [goalEndDate, setGoalEndDate] = useState<Date | null>(null);
+  const [hasEndDate, setHasEndDate] = useState(false);
 
   // UI state
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
@@ -77,37 +82,56 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
       // Initialize form - either with existing data or defaults
       if (initialData) {
         // Editing existing goal
+        setSelectedGoalType(initialData.goal_type || goalType || 'daily');
         setGoalName(initialData.goal_name || '');
         setGoalDescription(initialData.goal_description || '');
         setGoalTarget(initialData.goal_target?.toString() || '1');
         setGoalColor(initialData.goal_color || '#5D87FF');
         setGoalIcon(initialData.goal_icon || 'flag');
         setGoalStartDate(new Date(initialData.goal_start_date || new Date()));
-        setSelectedDays(initialData.goal_selected_days || (goalType === 'daily' ? [1, 2, 3, 4, 5] : []));
+        setSelectedDays(initialData.goal_selected_days || (initialData.goal_type === 'daily' ? [1, 2, 3, 4, 5] : []));
         
-        // Handle goal_target_days
-        if (initialData.goal_target_days === null) {
-          setGoalTargetDays('forever');
-          setCustomTargetDays('');
-        } else if ([1, 2, 3, 4, 7, 30].includes(initialData.goal_target_days)) {
-          setGoalTargetDays(initialData.goal_target_days);
-          setCustomTargetDays('');
+        // Handle cycling
+        setIsCycling(initialData.is_cycling || false);
+        
+        // Handle goal_cycle_duration (only show if cycling)
+        if (initialData.is_cycling) {
+          if (initialData.goal_cycle_duration === null) {
+            setGoalTargetDays('forever');
+            setCustomTargetDays('');
+          } else if ([1, 2, 3, 4, 7, 30].includes(initialData.goal_cycle_duration)) {
+            setGoalTargetDays(initialData.goal_cycle_duration);
+            setCustomTargetDays('');
+          } else {
+            setGoalTargetDays('custom');
+            setCustomTargetDays(initialData.goal_cycle_duration?.toString() || '');
+          }
+        }
+        
+        // Handle goal end date
+        if (initialData.goal_end_date) {
+          setHasEndDate(true);
+          setGoalEndDate(new Date(initialData.goal_end_date));
         } else {
-          setGoalTargetDays('custom');
-          setCustomTargetDays(initialData.goal_target_days?.toString() || '');
+          setHasEndDate(false);
+          setGoalEndDate(null);
         }
       } else {
         // Creating new goal - reset form
         const newStartDate = new Date();
+        setSelectedGoalType(goalType || 'daily');
         setGoalName('');
         setGoalDescription('');
         setGoalTarget('1');
         setGoalColor('#5D87FF');
         setGoalIcon('flag');
         setGoalStartDate(newStartDate);
-        setSelectedDays(goalType === 'daily' ? [1, 2, 3, 4, 5] : []);
+        setSelectedDays((goalType || 'daily') === 'daily' ? [1, 2, 3, 4, 5] : []);
         setGoalTargetDays('forever');
         setCustomTargetDays('');
+        setIsCycling(false);
+        setHasEndDate(false);
+        setGoalEndDate(null);
       }
       
       setError(null);
@@ -167,7 +191,7 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
       return;
     }
 
-    if (goalType === 'daily' && selectedDays.length === 0) {
+    if (selectedGoalType === 'daily' && selectedDays.length === 0) {
       setError('Please select at least one day for daily goals');
       return;
     }
@@ -175,7 +199,7 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
     if (goalTargetDays === 'custom') {
       const customDays = parseInt(customTargetDays);
       if (isNaN(customDays) || customDays < 1) {
-        const unit = goalType === 'daily' ? 'days' : goalType === 'weekly' ? 'weeks' : 'months';
+        const unit = selectedGoalType === 'daily' ? 'days' : selectedGoalType === 'weekly' ? 'weeks' : 'months';
         setError(`Please enter a valid number of ${unit} for custom duration`);
         return;
       }
@@ -185,23 +209,49 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
     setIsSaving(true);
 
     try {
+      // Calculate goal end date based on cycling and user selection
+      let calculatedEndDate: string | undefined = undefined;
+      
+      if (hasEndDate && goalEndDate) {
+        // User explicitly set an end date
+        calculatedEndDate = goalEndDate.toISOString().split('T')[0];
+      } else if (isCycling) {
+        // Cycling goal without explicit end date = one cycle duration from start
+        const cycleDuration = goalTargetDays === 'custom' ? parseInt(customTargetDays) : (goalTargetDays === 'forever' ? 1 : goalTargetDays);
+        const endDate = new Date(goalStartDate);
+        
+        if (selectedGoalType === 'daily') {
+          endDate.setDate(goalStartDate.getDate() + cycleDuration - 1);
+        } else if (selectedGoalType === 'weekly') {
+          endDate.setDate(goalStartDate.getDate() + (7 * cycleDuration) - 1);
+        } else if (selectedGoalType === 'monthly') {
+          endDate.setMonth(goalStartDate.getMonth() + cycleDuration);
+          endDate.setDate(endDate.getDate() - 1);
+        }
+        
+        calculatedEndDate = endDate.toISOString().split('T')[0];
+      }
+      // If not cycling and no end date selected = forever (undefined)
+
       const goalData: BaseGoal = {
         goal_name: goalName.trim(),
         goal_description: goalDescription.trim(),
         goal_target: target,
-        goal_type: goalType,
+        goal_type: selectedGoalType,
         goal_color: goalColor,
         goal_icon: goalIcon,
         goal_start_date: goalStartDate.toISOString().split('T')[0],
-        goal_target_days: goalTargetDays === 'custom' ? parseInt(customTargetDays) : (goalTargetDays === 'forever' ? undefined : goalTargetDays),
-        goal_selected_days: goalType === 'daily' ? selectedDays : undefined,
+        goal_cycle_duration: isCycling ? (goalTargetDays === 'custom' ? parseInt(customTargetDays) : (goalTargetDays === 'forever' ? undefined : goalTargetDays)) : undefined,
+        goal_selected_days: selectedGoalType === 'daily' ? selectedDays : undefined,
+        is_cycling: isCycling,
+        goal_end_date: calculatedEndDate,
       };
 
       await onSave(goalData);
+      setIsSaving(false);
       animateOut(onClose);
     } catch (error: any) {
       setError(error.message || 'Failed to create goal');
-    } finally {
       setIsSaving(false);
     }
   };
@@ -237,6 +287,30 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
 
   const handleDatePickerCancel = () => {
     setShowStartDatePicker(false);
+    // Reset to previous values if needed
+  };
+
+  const handleEndDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowEndDatePicker(false);
+      
+      if (event.type === 'set' && selectedDate) {
+        setGoalEndDate(selectedDate);
+      }
+    } else {
+      // For iOS, we handle the date change immediately but don't close the picker
+      if (selectedDate) {
+        setGoalEndDate(selectedDate);
+      }
+    }
+  };
+
+  const handleEndDateDone = () => {
+    setShowEndDatePicker(false);
+  };
+
+  const handleEndDateCancel = () => {
+    setShowEndDatePicker(false);
     // Reset to previous values if needed
   };
 
@@ -323,21 +397,79 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
               />
             </View>
 
-            {/* Goal Type Display */}
+            {/* Goal Type Selector */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Goal Type</Text>
-              <View style={styles.goalTypeDisplay}>
-                <Text style={styles.goalTypeText}>
-                  {goalType.charAt(0).toUpperCase() + goalType.slice(1)} Goal
-                </Text>
-                <Text style={styles.goalTypeSubtext}>
-                  This goal will track {goalType} progress
-                </Text>
+              <Text style={styles.sectionSubtext}>Choose how often this goal resets</Text>
+              
+              <View style={styles.goalTypeContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.goalTypeOption,
+                    selectedGoalType === 'daily' && styles.goalTypeOptionSelected
+                  ]}
+                  onPress={() => setSelectedGoalType('daily')}
+                >
+                  <Ionicons 
+                    name={selectedGoalType === 'daily' ? 'radio-button-on' : 'radio-button-off'} 
+                    size={20} 
+                    color={selectedGoalType === 'daily' ? '#5D87FF' : '#ccc'} 
+                  />
+                  <View style={styles.goalTypeInfo}>
+                    <Text style={[
+                      styles.goalTypeText,
+                      selectedGoalType === 'daily' && styles.goalTypeTextSelected
+                    ]}>Daily Goal</Text>
+                    <Text style={styles.goalTypeSubtext}>Track progress every day</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.goalTypeOption,
+                    selectedGoalType === 'weekly' && styles.goalTypeOptionSelected
+                  ]}
+                  onPress={() => setSelectedGoalType('weekly')}
+                >
+                  <Ionicons 
+                    name={selectedGoalType === 'weekly' ? 'radio-button-on' : 'radio-button-off'} 
+                    size={20} 
+                    color={selectedGoalType === 'weekly' ? '#5D87FF' : '#ccc'} 
+                  />
+                  <View style={styles.goalTypeInfo}>
+                    <Text style={[
+                      styles.goalTypeText,
+                      selectedGoalType === 'weekly' && styles.goalTypeTextSelected
+                    ]}>Weekly Goal</Text>
+                    <Text style={styles.goalTypeSubtext}>Track progress every week</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.goalTypeOption,
+                    selectedGoalType === 'monthly' && styles.goalTypeOptionSelected
+                  ]}
+                  onPress={() => setSelectedGoalType('monthly')}
+                >
+                  <Ionicons 
+                    name={selectedGoalType === 'monthly' ? 'radio-button-on' : 'radio-button-off'} 
+                    size={20} 
+                    color={selectedGoalType === 'monthly' ? '#5D87FF' : '#ccc'} 
+                  />
+                  <View style={styles.goalTypeInfo}>
+                    <Text style={[
+                      styles.goalTypeText,
+                      selectedGoalType === 'monthly' && styles.goalTypeTextSelected
+                    ]}>Monthly Goal</Text>
+                    <Text style={styles.goalTypeSubtext}>Track progress every month</Text>
+                  </View>
+                </TouchableOpacity>
               </View>
             </View>
 
             {/* Day Selection for Daily Goals */}
-            {goalType === 'daily' && (
+            {selectedGoalType === 'daily' && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Select Days</Text>
                 <Text style={styles.sectionSubtext}>Choose which days to include in this daily goal</Text>
@@ -440,10 +572,38 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
               </ScrollView>
             </View>
 
-            {/* Goal Duration */}
+            {/* Cycling Option */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Goal Duration</Text>
-              <Text style={styles.sectionSubtext}>How long should this goal run?</Text>
+              <Text style={styles.sectionTitle}>Goal Options</Text>
+              
+              <View style={styles.toggleOption}>
+                <Ionicons
+                  name={isCycling ? 'refresh-circle' : 'refresh-circle-outline'}
+                  size={22}
+                  color="#5D87FF"
+                />
+                <View style={styles.toggleInfo}>
+                  <Text style={styles.toggleTitle}>Cycle Goal</Text>
+                  <Text style={styles.toggleSubtext}>
+                    Goal resets automatically after each cycle
+                  </Text>
+                </View>
+                <Switch
+                  trackColor={{ false: "#d9d9d9", true: "#a3c0ff" }}
+                  thumbColor={isCycling ? "#5D87FF" : "#f4f3f4"}
+                  ios_backgroundColor="#d9d9d9"
+                  onValueChange={() => setIsCycling(!isCycling)}
+                  value={isCycling}
+                  style={styles.switch}
+                />
+              </View>
+            </View>
+
+            {/* Cycle Duration - Only show if cycling is enabled */}
+            {isCycling && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Cycle Duration</Text>
+                <Text style={styles.sectionSubtext}>How long should each cycle last?</Text>
               
               <View style={styles.durationOptionsContainer}>
                 <TouchableOpacity
@@ -464,7 +624,7 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
                   ]}>Forever</Text>
                 </TouchableOpacity>
 
-                {goalType === 'daily' && (
+                {selectedGoalType === 'daily' && (
                   <>
                     <TouchableOpacity
                       style={[
@@ -504,7 +664,7 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
                   </>
                 )}
 
-                {goalType === 'weekly' && (
+                {selectedGoalType === 'weekly' && (
                   <>
                     <TouchableOpacity
                       style={[
@@ -580,7 +740,7 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
                   </>
                 )}
 
-                {goalType === 'monthly' && (
+                {selectedGoalType === 'monthly' && (
                   <>
                     <TouchableOpacity
                       style={[
@@ -679,18 +839,19 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
                 <View style={styles.customDurationContainer}>
                   <TextInput
                     style={styles.customDurationInput}
-                    placeholder={`Enter number of ${goalType === 'daily' ? 'days' : goalType === 'weekly' ? 'weeks' : 'months'}`}
+                    placeholder={`Enter number of ${selectedGoalType === 'daily' ? 'days' : selectedGoalType === 'weekly' ? 'weeks' : 'months'}`}
                     placeholderTextColor="#999"
                     value={customTargetDays}
                     onChangeText={setCustomTargetDays}
                     keyboardType="numeric"
                   />
                   <Text style={styles.customDurationLabel}>
-                    {goalType === 'daily' ? 'days' : goalType === 'weekly' ? 'weeks' : 'months'}
+                    {selectedGoalType === 'daily' ? 'days' : selectedGoalType === 'weekly' ? 'weeks' : 'months'}
                   </Text>
                 </View>
               )}
-            </View>
+              </View>
+            )}
 
             {/* Start Date */}
             <View style={styles.section}>
@@ -703,6 +864,46 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
                 <Text style={styles.dateButtonText}>{formatDate(goalStartDate)}</Text>
                 <Ionicons name="chevron-forward" size={16} color="#ccc" />
               </TouchableOpacity>
+            </View>
+
+            {/* Goal End Date Option */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Goal End Date</Text>
+              
+              <View style={styles.toggleOption}>
+                <Ionicons
+                  name={hasEndDate ? 'calendar' : 'calendar-outline'}
+                  size={22}
+                  color="#5D87FF"
+                />
+                <View style={styles.toggleInfo}>
+                  <Text style={styles.toggleTitle}>Set End Date</Text>
+                  <Text style={styles.toggleSubtext}>
+                    {hasEndDate ? 'Goal will end on specific date' : 'Goal will run indefinitely (or until cycle ends)'}
+                  </Text>
+                </View>
+                <Switch
+                  trackColor={{ false: "#d9d9d9", true: "#a3c0ff" }}
+                  thumbColor={hasEndDate ? "#5D87FF" : "#f4f3f4"}
+                  ios_backgroundColor="#d9d9d9"
+                  onValueChange={() => setHasEndDate(!hasEndDate)}
+                  value={hasEndDate}
+                  style={styles.switch}
+                />
+              </View>
+
+              {hasEndDate && (
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => setShowEndDatePicker(true)}
+                >
+                  <Ionicons name="calendar-outline" size={20} color="#666" />
+                  <Text style={styles.dateButtonText}>
+                    {goalEndDate ? formatDate(goalEndDate) : 'Select End Date'}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color="#999" />
+                </TouchableOpacity>
+              )}
             </View>
           </ScrollView>
 
@@ -736,6 +937,40 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
                   display="default"
                   onChange={(event, date) => handleDateChange(event, date)}
                   minimumDate={new Date()}
+                />
+              )}
+            </View>
+          )}
+
+          {/* End Date Picker */}
+          {showEndDatePicker && (
+            <View style={styles.datePickerContainer}>
+              {Platform.OS === 'ios' ? (
+                <View style={styles.datePickerWrapper}>
+                  <View style={styles.datePickerHeader}>
+                    <TouchableOpacity onPress={handleEndDateCancel}>
+                      <Text style={styles.datePickerButton}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleEndDateDone}>
+                      <Text style={[styles.datePickerButton, styles.datePickerDone]}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={goalEndDate || new Date()}
+                    mode="date"
+                    display="spinner"
+                    onChange={(event, date) => handleEndDateChange(event, date)}
+                    minimumDate={goalStartDate}
+                    style={styles.datePickerIOS}
+                  />
+                </View>
+              ) : (
+                <DateTimePicker
+                  value={goalEndDate || new Date()}
+                  mode="date"
+                  display="default"
+                  onChange={(event, date) => handleEndDateChange(event, date)}
+                  minimumDate={goalStartDate}
                 />
               )}
             </View>
@@ -847,18 +1082,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  goalTypeDisplay: {
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
+  goalTypeContainer: {
+    gap: 12,
+  },
+  goalTypeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+  },
+  goalTypeOptionSelected: {
+    borderColor: '#5D87FF',
+    backgroundColor: '#f8f9ff',
+  },
+  goalTypeInfo: {
+    flex: 1,
+    marginLeft: 12,
   },
   goalTypeText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  goalTypeTextSelected: {
     color: '#5D87FF',
-    marginBottom: 4,
   },
   goalTypeSubtext: {
     fontSize: 14,
@@ -1083,6 +1334,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontWeight: '500',
+  },
+  toggleOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    marginTop: 12,
+  },
+  toggleInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  toggleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  toggleSubtext: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  switch: {
+    transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
   },
 });
 
