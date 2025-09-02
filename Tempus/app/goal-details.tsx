@@ -40,10 +40,27 @@ export default function GoalDetailsScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [taskModalVisible, setTaskModalVisible] = useState(false);
+  const [taskFilter, setTaskFilter] = useState<'all' | 'cycle'>('all');
 
-  // Sort tasks: incomplete tasks first (sorted by date, latest first), then completed tasks
+  // Filter and sort tasks: filter by cycle if needed, then sort
   const sortedTasks = useMemo(() => {
-    return [...tasks].sort((a, b) => {
+    let filteredTasks = tasks;
+    
+    // Apply cycle filter if needed
+    if (taskFilter === 'cycle' && goal?.current_cycle_start && goal?.current_cycle_end) {
+      const cycleStart = new Date(goal.current_cycle_start);
+      const cycleEnd = new Date(goal.current_cycle_end);
+      cycleEnd.setHours(23, 59, 59, 999); // Include entire end day
+      
+      filteredTasks = tasks.filter(task => {
+        if (!task.task_start_date) return false;
+        const taskDate = new Date(task.task_start_date);
+        return taskDate >= cycleStart && taskDate <= cycleEnd;
+      });
+    }
+    
+    // Sort: incomplete tasks first (by date, latest first), then completed tasks
+    return [...filteredTasks].sort((a, b) => {
       // First, separate completed and incomplete tasks
       if (a.is_completed !== b.is_completed) {
         return a.is_completed ? 1 : -1; // Completed tasks go to bottom
@@ -56,7 +73,7 @@ export default function GoalDetailsScreen() {
       // Latest dates first (descending order)
       return dateB - dateA;
     });
-  }, [tasks]);
+  }, [tasks, taskFilter, goal?.current_cycle_start, goal?.current_cycle_end]);
 
   useEffect(() => {
     console.log('GoalDetailsScreen - Received goalId:', goalId);
@@ -410,12 +427,24 @@ export default function GoalDetailsScreen() {
                   {goal.goal_type.charAt(0).toUpperCase() + goal.goal_type.slice(1)}
                 </Text>
               </View>
+              {goal.goal_type === 'daily' && goal.goal_selected_days && (
+                <View style={styles.infoRow}>
+                  <Ionicons name="calendar-outline" size={20} color="#666" />
+                  <Text style={styles.infoLabel}>Active Days</Text>
+                  <Text style={styles.infoValue}>
+                    {goal.goal_selected_days.map(day => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]).join(', ')}
+                  </Text>
+                </View>
+              )}
               {goal.current_cycle_start && goal.current_cycle_end && (
                 <View style={styles.infoRow}>
                   <Ionicons name="time-outline" size={20} color="#666" />
                   <Text style={styles.infoLabel}>Current Cycle</Text>
                   <Text style={styles.infoValue}>
-                    {new Date(goal.current_cycle_start).toLocaleDateString()} - {new Date(goal.current_cycle_end).toLocaleDateString()}
+                    {goal.goal_type === 'daily' ? 
+                      `${new Date(goal.current_cycle_start).toLocaleDateString()}  •  00:00 - 23:59` :
+                      `${new Date(goal.current_cycle_start).toLocaleDateString()} - ${new Date(goal.current_cycle_end).toLocaleDateString()}`
+                    }
                   </Text>
                 </View>
               )}
@@ -434,7 +463,17 @@ export default function GoalDetailsScreen() {
 
         {sortedTasks.length > 0 && (
           <View style={styles.tasksSection}>
-            <Text style={styles.sectionTitle}>Linked Tasks ({sortedTasks.length})</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>
+                {taskFilter === 'all' ? 'Linked Tasks' : 'Current Cycle Tasks'} ({sortedTasks.length})
+              </Text>
+              {taskFilter === 'cycle' && (
+                <View style={styles.filterIndicator}>
+                  <Ionicons name="time" size={14} color="#5D87FF" />
+                  <Text style={styles.filterText}>Cycle Filter</Text>
+                </View>
+              )}
+            </View>
             {sortedTasks.map((task) => (
               <TaskDetailItem
                 key={task.task_id}
@@ -474,6 +513,23 @@ export default function GoalDetailsScreen() {
             <TouchableOpacity style={styles.menuItem} onPress={handleEditGoal}>
               <Ionicons name="create-outline" size={20} color="#333" />
               <Text style={styles.menuItemText}>Edit Goal</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => {
+                setTaskFilter(taskFilter === 'all' ? 'cycle' : 'all');
+                setShowMenu(false);
+              }}
+            >
+              <Ionicons 
+                name={taskFilter === 'cycle' ? "time" : "list"} 
+                size={20} 
+                color="#333" 
+              />
+              <Text style={styles.menuItemText}>
+                Show {taskFilter === 'all' ? 'Cycle Tasks' : 'All Tasks'}
+              </Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -802,5 +858,25 @@ const styles = StyleSheet.create({
   },
   deleteMenuText: {
     color: '#FF4444',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  filterIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(93, 135, 255, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  filterText: {
+    fontSize: 12,
+    color: '#5D87FF',
+    marginLeft: 4,
+    fontWeight: '500',
   },
 });

@@ -62,7 +62,14 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
                     <View style={styles.cycleIndicator}>
                       <Ionicons name="refresh-circle" size={12} color="rgba(255, 255, 255, 0.8)" />
                       <Text style={styles.cycleText}>cycling</Text>
-                      {goal.current_cycle_start && goal.current_cycle_end && (
+                      {goal.goal_type === 'daily' && goal.goal_selected_days && (
+                        <View style={styles.selectedDaysContainer}>
+                          <Text style={styles.selectedDaysText}>
+                            ({goal.goal_selected_days.map(day => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]).join(', ')})
+                          </Text>
+                        </View>
+                      )}
+                      {goal.goal_type !== 'daily' && goal.current_cycle_start && goal.current_cycle_end && (
                         <View style={styles.cycleRangeContainer}>
                           <Text style={styles.cycleRange}>
                             ({new Date(goal.current_cycle_start).toLocaleDateString()} - {new Date(goal.current_cycle_end).toLocaleDateString()})
@@ -722,6 +729,13 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   cycleRange: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+  selectedDaysContainer: {
+    marginLeft: 4,
+  },
+  selectedDaysText: {
     fontSize: 10,
     color: 'rgba(255, 255, 255, 0.6)',
   },

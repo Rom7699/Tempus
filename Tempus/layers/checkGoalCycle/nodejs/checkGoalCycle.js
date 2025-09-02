@@ -15,17 +15,20 @@ const checkAndResetGoalCycle = async (pool, goal) => {
   let newCycleEnd = null;
 
   if (goal.goal_type === 'daily') {
-    // For daily goals, reset if we've passed the cycle end and today is a selected day
+    // For daily goals, only reset if it's a new selected day after the current cycle ended
     const selectedDays = goal.goal_selected_days || [0,1,2,3,4,5,6]; // Default to all days
-    const needsReset = today > cycleEndDate && selectedDays.includes(dayOfWeek);
+    const currentCycleStartStr = goal.current_cycle_start;
     
-    if (needsReset) {
-      shouldReset = true;
-      // Set new cycle to today (start) and end of today (end)
-      newCycleStart = todayStr;
-      const todayEndDate = new Date(today);
-      todayEndDate.setHours(23, 59, 59, 999); // End of day
-      newCycleEnd = todayEndDate.toISOString().split('T')[0];
+    // Check if today is a selected day and it's different from current cycle start
+    if (selectedDays.includes(dayOfWeek) && currentCycleStartStr !== todayStr) {
+      // Only reset if we've actually passed the cycle end (completed the previous day)
+      if (today > cycleEndDate) {
+        shouldReset = true;
+        newCycleStart = todayStr;
+        const todayEndDate = new Date(today);
+        todayEndDate.setHours(23, 59, 59, 999); // End of day
+        newCycleEnd = todayEndDate.toISOString().split('T')[0];
+      }
     }
     
   } else if (goal.goal_type === 'weekly') {
