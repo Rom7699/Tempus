@@ -51,7 +51,8 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Default: weekdays
   const [goalTargetDays, setGoalTargetDays] = useState<number | 'forever' | 'custom'>('forever');
   const [customTargetDays, setCustomTargetDays] = useState('');
-  const [isCycling, setIsCycling] = useState(false);
+  // All goals are now cycling by default
+  const isCycling = true;
   const [goalEndDate, setGoalEndDate] = useState<Date | null>(null);
   const [hasEndDate, setHasEndDate] = useState(false);
 
@@ -74,6 +75,28 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
     'flame', 'diamond', 'rocket', 'medal', 'radio-button-on'
   ];
 
+  // Helper function to calculate duration between dates
+  const calculateDurationFromDates = (startDate: Date, endDate: Date, goalType: string): number => {
+    const timeDiff = endDate.getTime() - startDate.getTime();
+    
+    if (goalType === 'daily') {
+      return Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+    } else if (goalType === 'weekly') {
+      return Math.ceil(timeDiff / (1000 * 60 * 60 * 24 * 7));
+    } else if (goalType === 'monthly') {
+      // Approximate months calculation
+      const yearDiff = endDate.getFullYear() - startDate.getFullYear();
+      const monthDiff = endDate.getMonth() - startDate.getMonth();
+      const dayDiff = endDate.getDate() - startDate.getDate();
+      
+      let totalMonths = yearDiff * 12 + monthDiff;
+      if (dayDiff > 0) totalMonths += 1; // Round up if there are extra days
+      
+      return Math.max(1, totalMonths);
+    }
+    return 1;
+  };
+
 
   React.useEffect(() => {
     if (visible) {
@@ -91,21 +114,16 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
         setGoalStartDate(new Date(initialData.goal_start_date || new Date()));
         setSelectedDays(initialData.goal_selected_days || (initialData.goal_type === 'daily' ? [1, 2, 3, 4, 5] : []));
         
-        // Handle cycling
-        setIsCycling(initialData.is_cycling || false);
-        
-        // Handle goal_cycle_duration (only show if cycling)
-        if (initialData.is_cycling) {
-          if (initialData.goal_cycle_duration === null) {
-            setGoalTargetDays('forever');
-            setCustomTargetDays('');
-          } else if ([1, 2, 3, 4, 7, 30].includes(initialData.goal_cycle_duration)) {
-            setGoalTargetDays(initialData.goal_cycle_duration);
-            setCustomTargetDays('');
-          } else {
-            setGoalTargetDays('custom');
-            setCustomTargetDays(initialData.goal_cycle_duration?.toString() || '');
-          }
+        // Handle goal_cycle_duration (all goals are now cycling)
+        if (initialData.goal_cycle_duration === null) {
+          setGoalTargetDays('forever');
+          setCustomTargetDays('');
+        } else if ([1, 2, 3, 4, 7, 30].includes(initialData.goal_cycle_duration)) {
+          setGoalTargetDays(initialData.goal_cycle_duration);
+          setCustomTargetDays('');
+        } else {
+          setGoalTargetDays('custom');
+          setCustomTargetDays(initialData.goal_cycle_duration?.toString() || '');
         }
         
         // Handle goal end date
@@ -129,7 +147,6 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
         setSelectedDays((goalType || 'daily') === 'daily' ? [1, 2, 3, 4, 5] : []);
         setGoalTargetDays('forever');
         setCustomTargetDays('');
-        setIsCycling(false);
         setHasEndDate(false);
         setGoalEndDate(null);
       }
@@ -209,29 +226,14 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
     setIsSaving(true);
 
     try {
-      // Calculate goal end date based on cycling and user selection
+      // All goals are now cycling, no automatic end date calculation
+      // End date is only set if user explicitly selects one via custom duration
       let calculatedEndDate: string | undefined = undefined;
       
-      if (hasEndDate && goalEndDate) {
-        // User explicitly set an end date
+      if (goalEndDate && goalTargetDays === 'custom') {
+        // User selected an end date in custom duration
         calculatedEndDate = goalEndDate.toISOString().split('T')[0];
-      } else if (isCycling) {
-        // Cycling goal without explicit end date = one cycle duration from start
-        const cycleDuration = goalTargetDays === 'custom' ? parseInt(customTargetDays) : (goalTargetDays === 'forever' ? 1 : goalTargetDays);
-        const endDate = new Date(goalStartDate);
-        
-        if (selectedGoalType === 'daily') {
-          endDate.setDate(goalStartDate.getDate() + cycleDuration - 1);
-        } else if (selectedGoalType === 'weekly') {
-          endDate.setDate(goalStartDate.getDate() + (7 * cycleDuration) - 1);
-        } else if (selectedGoalType === 'monthly') {
-          endDate.setMonth(goalStartDate.getMonth() + cycleDuration);
-          endDate.setDate(endDate.getDate() - 1);
-        }
-        
-        calculatedEndDate = endDate.toISOString().split('T')[0];
       }
-      // If not cycling and no end date selected = forever (undefined)
 
       const goalData: BaseGoal = {
         goal_name: goalName.trim(),
@@ -241,9 +243,8 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
         goal_color: goalColor,
         goal_icon: goalIcon,
         goal_start_date: goalStartDate.toISOString().split('T')[0],
-        goal_cycle_duration: isCycling ? (goalTargetDays === 'custom' ? parseInt(customTargetDays) : (goalTargetDays === 'forever' ? undefined : goalTargetDays)) : undefined,
+        goal_cycle_duration: goalTargetDays === 'custom' ? parseInt(customTargetDays) : (goalTargetDays === 'forever' ? undefined : goalTargetDays),
         goal_selected_days: selectedGoalType === 'daily' ? selectedDays : undefined,
-        is_cycling: isCycling,
         goal_end_date: calculatedEndDate,
       };
 
@@ -296,11 +297,21 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
       
       if (event.type === 'set' && selectedDate) {
         setGoalEndDate(selectedDate);
+        // Auto-calculate and fill custom duration when end date is selected
+        if (goalTargetDays === 'custom') {
+          const calculatedDuration = calculateDurationFromDates(goalStartDate, selectedDate, selectedGoalType);
+          setCustomTargetDays(calculatedDuration.toString());
+        }
       }
     } else {
       // For iOS, we handle the date change immediately but don't close the picker
       if (selectedDate) {
         setGoalEndDate(selectedDate);
+        // Auto-calculate and fill custom duration when end date is selected
+        if (goalTargetDays === 'custom') {
+          const calculatedDuration = calculateDurationFromDates(goalStartDate, selectedDate, selectedGoalType);
+          setCustomTargetDays(calculatedDuration.toString());
+        }
       }
     }
   };
@@ -572,36 +583,8 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
               </ScrollView>
             </View>
 
-            {/* Cycling Option */}
+            {/* Cycle Duration - All goals are cycling now */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Goal Options</Text>
-              
-              <View style={styles.toggleOption}>
-                <Ionicons
-                  name={isCycling ? 'refresh-circle' : 'refresh-circle-outline'}
-                  size={22}
-                  color="#5D87FF"
-                />
-                <View style={styles.toggleInfo}>
-                  <Text style={styles.toggleTitle}>Cycle Goal</Text>
-                  <Text style={styles.toggleSubtext}>
-                    Goal resets automatically after each cycle
-                  </Text>
-                </View>
-                <Switch
-                  trackColor={{ false: "#d9d9d9", true: "#a3c0ff" }}
-                  thumbColor={isCycling ? "#5D87FF" : "#f4f3f4"}
-                  ios_backgroundColor="#d9d9d9"
-                  onValueChange={() => setIsCycling(!isCycling)}
-                  value={isCycling}
-                  style={styles.switch}
-                />
-              </View>
-            </View>
-
-            {/* Cycle Duration - Only show if cycling is enabled */}
-            {isCycling && (
-              <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Cycle Duration</Text>
                 <Text style={styles.sectionSubtext}>How long should each cycle last?</Text>
               
@@ -836,22 +819,51 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
               </View>
 
               {goalTargetDays === 'custom' && (
-                <View style={styles.customDurationContainer}>
-                  <TextInput
-                    style={styles.customDurationInput}
-                    placeholder={`Enter number of ${selectedGoalType === 'daily' ? 'days' : selectedGoalType === 'weekly' ? 'weeks' : 'months'}`}
-                    placeholderTextColor="#999"
-                    value={customTargetDays}
-                    onChangeText={setCustomTargetDays}
-                    keyboardType="numeric"
-                  />
-                  <Text style={styles.customDurationLabel}>
-                    {selectedGoalType === 'daily' ? 'days' : selectedGoalType === 'weekly' ? 'weeks' : 'months'}
-                  </Text>
+                <View style={styles.customDurationSection}>
+                  {/* Option 1: Enter number directly */}
+                  <View style={styles.customDurationContainer}>
+                    <TextInput
+                      style={styles.customDurationInput}
+                      placeholder={`Enter number of ${selectedGoalType === 'daily' ? 'days' : selectedGoalType === 'weekly' ? 'weeks' : 'months'}`}
+                      placeholderTextColor="#999"
+                      value={customTargetDays}
+                      onChangeText={(value) => {
+                        setCustomTargetDays(value);
+                        // Clear end date when manually entering number
+                        if (value && goalEndDate) {
+                          setGoalEndDate(null);
+                        }
+                      }}
+                      keyboardType="numeric"
+                    />
+                    <Text style={styles.customDurationLabel}>
+                      {selectedGoalType === 'daily' ? 'days' : selectedGoalType === 'weekly' ? 'weeks' : 'months'}
+                    </Text>
+                  </View>
+                  
+                  <Text style={styles.orText}>OR</Text>
+                  
+                  {/* Option 2: Select end date */}
+                  <View style={styles.endDateOption}>
+                    <TouchableOpacity
+                      style={styles.endDateButton}
+                      onPress={() => setShowEndDatePicker(true)}
+                    >
+                      <Ionicons name="calendar-outline" size={20} color="#5D87FF" />
+                      <Text style={styles.endDateButtonText}>
+                        {goalEndDate ? `End: ${formatDate(goalEndDate)}` : 'Select End Date'}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={16} color="#ccc" />
+                    </TouchableOpacity>
+                    {goalEndDate && (
+                      <Text style={styles.calculatedDuration}>
+                        Auto-calculated: {calculateDurationFromDates(goalStartDate, goalEndDate, selectedGoalType)} {selectedGoalType === 'daily' ? 'days' : selectedGoalType === 'weekly' ? 'weeks' : 'months'}
+                      </Text>
+                    )}
+                  </View>
                 </View>
               )}
-              </View>
-            )}
+            </View>
 
             {/* Start Date */}
             <View style={styles.section}>
@@ -866,45 +878,6 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Goal End Date Option */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Goal End Date</Text>
-              
-              <View style={styles.toggleOption}>
-                <Ionicons
-                  name={hasEndDate ? 'calendar' : 'calendar-outline'}
-                  size={22}
-                  color="#5D87FF"
-                />
-                <View style={styles.toggleInfo}>
-                  <Text style={styles.toggleTitle}>Set End Date</Text>
-                  <Text style={styles.toggleSubtext}>
-                    {hasEndDate ? 'Goal will end on specific date' : 'Goal will run indefinitely (or until cycle ends)'}
-                  </Text>
-                </View>
-                <Switch
-                  trackColor={{ false: "#d9d9d9", true: "#a3c0ff" }}
-                  thumbColor={hasEndDate ? "#5D87FF" : "#f4f3f4"}
-                  ios_backgroundColor="#d9d9d9"
-                  onValueChange={() => setHasEndDate(!hasEndDate)}
-                  value={hasEndDate}
-                  style={styles.switch}
-                />
-              </View>
-
-              {hasEndDate && (
-                <TouchableOpacity
-                  style={styles.dateButton}
-                  onPress={() => setShowEndDatePicker(true)}
-                >
-                  <Ionicons name="calendar-outline" size={20} color="#666" />
-                  <Text style={styles.dateButtonText}>
-                    {goalEndDate ? formatDate(goalEndDate) : 'Select End Date'}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={16} color="#999" />
-                </TouchableOpacity>
-              )}
-            </View>
           </ScrollView>
 
           {/* Date Pickers */}
@@ -1315,10 +1288,12 @@ const styles = StyleSheet.create({
     color: '#5D87FF',
     fontWeight: '500',
   },
+  customDurationSection: {
+    marginTop: 12,
+  },
   customDurationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
     gap: 8,
   },
   customDurationInput: {
@@ -1334,6 +1309,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontWeight: '500',
+    paddingHorizontal: 8,
+  },
+  orText: {
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 14,
+    fontWeight: '500',
+    marginVertical: 16,
+  },
+  endDateOption: {
+    marginTop: 8,
+  },
+  endDateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#f8f9ff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e8e8e8',
+  },
+  endDateButtonText: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#333',
+  },
+  calculatedDuration: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#5D87FF',
+    fontWeight: '500',
+    textAlign: 'center',
   },
   toggleOption: {
     flexDirection: 'row',

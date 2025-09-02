@@ -9,11 +9,10 @@ exports.handler = async (event) => {
     
     console.log(`[CycleGoals] Checking for goals to cycle on ${todayStr}, day of week: ${dayOfWeek}`);
 
-    // Get all cycling goals that might need to be reset
+    // Get all goals that might need to be reset (all goals are cycling now)
     const goalsQuery = `
       SELECT * FROM goals 
-      WHERE is_cycling = true 
-      AND is_completed = false
+      WHERE is_completed = false
       AND current_cycle_end IS NOT NULL
       AND current_cycle_end < $1
     `;

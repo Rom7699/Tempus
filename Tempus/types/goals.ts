@@ -10,7 +10,6 @@ export interface BaseGoal {
   goal_end_date?: string; // Optional end date for the goal
   goal_cycle_duration?: number; // Duration of each cycle (null for forever), for daily means days, for weekly/monthly means number of weeks/months
   goal_selected_days?: number[]; // Array of selected days (0=Sunday, 1=Monday, ..., 6=Saturday) for daily goals
-  is_cycling?: boolean; // Whether the goal should reset automatically
 }
 
 // Full goal interface with server-generated fields
@@ -44,7 +43,6 @@ export interface UpdateGoalInput {
   goal_selected_days?: number[];
   is_completed?: boolean;
   is_active?: boolean;
-  is_cycling?: boolean;
   current_cycle_start?: string;
   current_cycle_end?: string;
   cycles_completed?: number;

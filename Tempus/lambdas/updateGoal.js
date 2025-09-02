@@ -36,7 +36,7 @@ exports.handler = async (event) => {
       'goal_progress', 'goal_type', 'goal_color', 
       'goal_icon', 'goal_start_date', 'goal_end_date',
       'goal_cycle_duration', 'goal_selected_days', 'is_completed', 'is_active',
-      'is_cycling', 'current_cycle_start', 'current_cycle_end', 'cycles_completed', 'total_cycles'
+      'current_cycle_start', 'current_cycle_end', 'cycles_completed', 'total_cycles'
     ];
 
     const updates = [];
@@ -68,7 +68,7 @@ exports.handler = async (event) => {
     }
 
     // Recalculate goal_end_date and current cycle if relevant fields changed
-    const needsRecalculation = fields.goal_start_date || fields.goal_cycle_duration || fields.is_cycling || fields.goal_type;
+    const needsRecalculation = fields.goal_start_date || fields.goal_cycle_duration || fields.goal_type;
     
     if (needsRecalculation) {
       // First, get current goal data to merge with updates
@@ -86,12 +86,11 @@ exports.handler = async (event) => {
       const updatedGoal = {
         goal_start_date: fields.goal_start_date || currentGoal.goal_start_date,
         goal_cycle_duration: fields.goal_cycle_duration !== undefined ? fields.goal_cycle_duration : currentGoal.goal_cycle_duration,
-        is_cycling: fields.is_cycling !== undefined ? fields.is_cycling : currentGoal.is_cycling,
         goal_type: fields.goal_type || currentGoal.goal_type
       };
       
-      // Recalculate goal_end_date if cycling and has duration
-      if (updatedGoal.is_cycling && updatedGoal.goal_cycle_duration && updatedGoal.goal_cycle_duration !== 'forever') {
+      // Recalculate goal_end_date if has duration (all goals are cycling)
+      if (updatedGoal.goal_cycle_duration && updatedGoal.goal_cycle_duration !== 'forever') {
         const startDate = new Date(updatedGoal.goal_start_date);
         const endDate = new Date(startDate);
         
@@ -108,33 +107,31 @@ exports.handler = async (event) => {
         values.push(endDate.toISOString().split('T')[0]);
       }
       
-      // Recalculate current cycle dates if cycling
-      if (updatedGoal.is_cycling) {
-        const startDate = new Date(updatedGoal.goal_start_date);
-        const cycleEndDate = new Date(startDate);
-        
-        if (updatedGoal.goal_type === 'daily') {
-          // For daily goals, each cycle is 1 day long - end at end of start day
-          cycleEndDate.setDate(startDate.getDate());
-          cycleEndDate.setHours(23, 59, 59, 999); // End of day
-        } else if (updatedGoal.goal_type === 'weekly') {
-          // Weekly cycle is exactly 7 days long (1 week)
-          cycleEndDate.setDate(startDate.getDate() + 6); // 7 days total (0-6)
-        } else if (updatedGoal.goal_type === 'monthly') {
-          // Monthly cycle is exactly 1 month long
-          cycleEndDate.setMonth(startDate.getMonth() + 1);
-          cycleEndDate.setDate(cycleEndDate.getDate() - 1);
-        }
-        
-        updates.push(`current_cycle_start = $${index++}`);
-        values.push(updatedGoal.goal_start_date);
-        updates.push(`current_cycle_end = $${index++}`);
-        values.push(cycleEndDate.toISOString().split('T')[0]);
-        updates.push(`cycles_completed = $${index++}`);
-        values.push(0); // Reset cycles when recalculating
-        updates.push(`total_cycles = $${index++}`);
-        values.push(0); // Reset total cycles when recalculating
+      // Recalculate current cycle dates (all goals are cycling)
+      const startDate = new Date(updatedGoal.goal_start_date);
+      const cycleEndDate = new Date(startDate);
+      
+      if (updatedGoal.goal_type === 'daily') {
+        // For daily goals, each cycle is 1 day long - end at end of start day
+        cycleEndDate.setDate(startDate.getDate());
+        cycleEndDate.setHours(23, 59, 59, 999); // End of day
+      } else if (updatedGoal.goal_type === 'weekly') {
+        // Weekly cycle is exactly 7 days long (1 week)
+        cycleEndDate.setDate(startDate.getDate() + 6); // 7 days total (0-6)
+      } else if (updatedGoal.goal_type === 'monthly') {
+        // Monthly cycle is exactly 1 month long
+        cycleEndDate.setMonth(startDate.getMonth() + 1);
+        cycleEndDate.setDate(cycleEndDate.getDate() - 1);
       }
+      
+      updates.push(`current_cycle_start = $${index++}`);
+      values.push(updatedGoal.goal_start_date);
+      updates.push(`current_cycle_end = $${index++}`);
+      values.push(cycleEndDate.toISOString().split('T')[0]);
+      updates.push(`cycles_completed = $${index++}`);
+      values.push(0); // Reset cycles when recalculating
+      updates.push(`total_cycles = $${index++}`);
+      values.push(0); // Reset total cycles when recalculating
     }
 
     if (updates.length === 0) {

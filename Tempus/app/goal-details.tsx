@@ -133,18 +133,57 @@ export default function GoalDetailsScreen() {
       const task = tasks.find(t => t.task_id === taskId);
       if (!task) return;
 
-      await updateTask({
-        task_id: taskId,
-        is_completed: !task.is_completed,
-      });
+      const wasCompleted = task.is_completed;
+      const willBeCompleted = !wasCompleted;
 
+      // Optimistic update - update UI immediately
       setTasks(prev => 
         prev.map(t => 
           t.task_id === taskId 
-            ? { ...t, is_completed: !t.is_completed }
+            ? { ...t, is_completed: willBeCompleted }
             : t
         )
       );
+
+      // Optimistic goal progress update
+      if (task.task_goal_id && goal) {
+        setGoal(prev => {
+          if (!prev) return prev;
+          
+          const newProgress = willBeCompleted 
+            ? prev.goal_progress + 1 
+            : Math.max(prev.goal_progress - 1, 0);
+            
+          // Check if goal is now completed or no longer completed
+          const isNowCompleted = newProgress >= prev.goal_target;
+          const wasCompleted = prev.goal_progress >= prev.goal_target;
+          
+          // Show congratulatory message if goal just completed
+          if (isNowCompleted && !wasCompleted) {
+            Alert.alert(
+              '🎉 Goal Completed!',
+              `Congratulations! You've completed your goal "${prev.goal_name}". Great job reaching your target!`,
+              [{ text: 'Awesome!', style: 'default' }]
+            );
+          }
+          
+          return {
+            ...prev,
+            goal_progress: newProgress,
+            is_completed: isNowCompleted,
+            // Set completion date if just completed, clear if no longer completed
+            completion_date: isNowCompleted && !wasCompleted 
+              ? new Date().toISOString() 
+              : (!isNowCompleted && wasCompleted ? null : prev.completion_date)
+          };
+        });
+      }
+
+      // Then update server in background
+      await updateTask({
+        task_id: taskId,
+        is_completed: willBeCompleted,
+      });
     } catch (error: any) {
       Alert.alert('Error', 'Failed to update task');
     }
@@ -415,7 +454,7 @@ export default function GoalDetailsScreen() {
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{completedTasks}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={styles.statLabel}>Tasks Completed</Text>
           </View>
         </View>
 
@@ -445,8 +484,8 @@ export default function GoalDetailsScreen() {
               {goal.is_completed ? 'Completed' : 'In Progress'}
             </Text>
           </View>
-          {goal.is_cycling && (
-            <>
+          {/* All goals are cycling now */}
+          <>
               <View style={styles.infoRow}>
                 <Ionicons name="refresh-outline" size={20} color="#666" />
                 <Text style={styles.infoLabel}>Cycling</Text>
@@ -475,7 +514,7 @@ export default function GoalDetailsScreen() {
                   </Text>
                 </View>
               )}
-              {goal.is_cycling && goal.cycles_completed !== undefined && (
+              {goal.cycles_completed !== undefined && (
                 <View style={styles.infoRow}>
                   <Ionicons name="trophy-outline" size={20} color="#666" />
                   <Text style={styles.infoLabel}>Cycle Success</Text>
@@ -484,8 +523,7 @@ export default function GoalDetailsScreen() {
                   </Text>
                 </View>
               )}
-            </>
-          )}
+          </>
         </View>
 
         {sortedTasks.length > 0 && (

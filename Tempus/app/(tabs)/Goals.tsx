@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { useApi } from '../../context/ApiContext';
 import { Goal, BaseGoal } from '../../types/goals';
 import AddGoalModal from '../../components/AddGoalModal';
@@ -35,14 +36,11 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
 
   const getGoalGradient = (color: string): [string, string] => {
     const gradient = createGradient(color || '#5D87FF');
-    // If goal is completed, use a slightly muted version
-    if (goal.is_completed) {
-      return [gradient[0] + '99', gradient[1] + 'CC'];
-    }
     // If goal is inactive, use a more muted version
     if (goal.is_active === false) {
       return [gradient[0] + '66', gradient[1] + '99'];
     }
+    // Completed and active goals use the same styling
     return gradient;
   };
 
@@ -62,8 +60,8 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
                 <Text style={styles.goalTitle}>{goal.goal_name}</Text>
                 <View style={styles.goalMetaContainer}>
                   <Text style={styles.goalPeriod}>{goal.goal_type}</Text>
-                  {goal.is_cycling && (
-                    <View style={styles.cycleIndicator}>
+                  {/* All goals are cycling now */}
+                  <View style={styles.cycleIndicator}>
                       <Ionicons name="refresh-circle" size={12} color="rgba(255, 255, 255, 0.8)" />
                       <Text style={styles.cycleText}>cycling</Text>
                       {goal.goal_type === 'daily' && goal.goal_selected_days && (
@@ -81,7 +79,6 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
                         </View>
                       )}
                     </View>
-                  )}
                 </View>
               </View>
             </View>
@@ -191,6 +188,13 @@ const GoalsScreen: React.FC = () => {
   useEffect(() => {
     refreshGoals();
   }, [refreshGoals]);
+
+  // Refresh goals when tab comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshGoals();
+    }, [refreshGoals])
+  );
 
   const filteredGoals = goals.filter((goal: Goal) => {
     // Filter by goal type

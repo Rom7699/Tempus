@@ -67,33 +67,56 @@ exports.handler = async (event) => {
     // Use transaction to keep things consistent
     await client.query('BEGIN');
 
+    // Get the old task state BEFORE updating
+    let oldCompleted = null;
+    if (isCompletedSet) {
+      const oldTaskRes = await client.query(
+        `SELECT is_completed, task_goal_id FROM tasks WHERE task_id = $1 AND user_id = $2`,
+        [taskId, userId]
+      );
+      oldCompleted = oldTaskRes.rows[0]?.is_completed;
+    }
+
     const { rows } = await client.query(query, values);
     const updatedTask = rows[0];
 
     if (isCompletedSet && updatedTask.task_goal_id) {
-      // Get the old task state
-      const oldTaskRes = await client.query(
-        `SELECT is_completed FROM tasks WHERE task_id = $1`,
-        [taskId]
-      );
-      const oldCompleted = oldTaskRes.rows[0]?.is_completed;
-
       // If completion changed, update goal progress
       if (oldCompleted !== fields.is_completed) {
         if (fields.is_completed === true) {
-          await client.query(
+          // Increment progress and check if goal is completed
+          const goalUpdateResult = await client.query(
             `UPDATE goals
              SET goal_progress = goal_progress + 1,
-                 updated_at = NOW()
-             WHERE goal_id = $1 AND user_id = $2`,
+                 updated_at = NOW(),
+                 is_completed = CASE 
+                   WHEN goal_progress + 1 >= goal_target THEN true 
+                   ELSE is_completed 
+                 END,
+                 completion_date = CASE 
+                   WHEN goal_progress + 1 >= goal_target AND is_completed = false THEN NOW() 
+                   ELSE completion_date 
+                 END
+             WHERE goal_id = $1 AND user_id = $2
+             RETURNING goal_progress, goal_target, is_completed`,
             [updatedTask.task_goal_id, userId]
           );
         } else if (fields.is_completed === false) {
-          await client.query(
+          // Decrement progress and check if goal is no longer completed
+          const goalUpdateResult = await client.query(
             `UPDATE goals
              SET goal_progress = GREATEST(goal_progress - 1, 0),
-                 updated_at = NOW()
-             WHERE goal_id = $1 AND user_id = $2`,
+                 updated_at = NOW(),
+                 is_completed = CASE 
+                   WHEN GREATEST(goal_progress - 1, 0) < goal_target THEN false 
+                   ELSE is_completed 
+                 END,
+                 completion_date = CASE 
+                   WHEN GREATEST(goal_progress - 1, 0) < goal_target THEN NULL 
+                   ELSE completion_date 
+                 END
+             WHERE goal_id = $1 AND user_id = $2
+             RETURNING goal_progress, goal_target, is_completed`,
             [updatedTask.task_goal_id, userId]
           );
         }

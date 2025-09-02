@@ -20,8 +20,8 @@ const checkAndResetGoalCycle = async (pool, goal) => {
     }
   }
 
-  if (!goal.is_cycling || !goal.current_cycle_end) {
-    return goal; // Not a cycling goal, return as-is
+  if (!goal.current_cycle_end) {
+    return goal; // No cycle end date, return as-is
   }
 
   const today = new Date();
