@@ -57,12 +57,6 @@ interface HealthDataJSON {
   };
   userId: string;
   dailyData: Record<string, DailyHealthData>;
-  dataCompleteness: Record<string, {
-    sleep: boolean;
-    heartRate: boolean;
-    restingHeartRate: boolean;
-    steps: boolean;
-  }>;
 }
 
 export class HealthDataService {
@@ -304,26 +298,6 @@ export class HealthDataService {
     return groupedData;
   }
 
-  /**
-   * Calculate data completeness for each day
-   */
-  private calculateDataCompleteness(
-    dailyData: Record<string, DailyHealthData>
-  ): Record<string, { sleep: boolean; heartRate: boolean; restingHeartRate: boolean; steps: boolean }> {
-    const completeness: Record<string, any> = {};
-
-    Object.keys(dailyData).forEach((date) => {
-      const dayData = dailyData[date];
-      completeness[date] = {
-        sleep: dayData.sleep.length > 0,
-        heartRate: dayData.heartRate.length > 0,
-        restingHeartRate: dayData.restingHeartRate.length > 0,
-        steps: dayData.steps.samples.length > 0,
-      };
-    });
-
-    return completeness;
-  }
 
   /**
    * Main function to fetch all health data for a specified number of days
@@ -369,9 +343,6 @@ export class HealthDataService {
         stepData
       );
 
-      // Calculate data completeness
-      const dataCompleteness = this.calculateDataCompleteness(dailyData);
-
       // Get timezone
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -388,7 +359,6 @@ export class HealthDataService {
         },
         userId,
         dailyData,
-        dataCompleteness,
       };
 
       console.log('[HealthDataService] Health data prepared for upload:', healthDataJSON);
