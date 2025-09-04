@@ -3,10 +3,10 @@ import {
   CognitoUserAttribute,
   AuthenticationDetails,
   ISignUpResult,
-} from 'amazon-cognito-identity-js';
-import { userPool } from '../config/cognito';
-import { CognitoStorage } from '../utils/CognitoStorage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+} from "amazon-cognito-identity-js";
+import { userPool } from "../config/cognito";
+import { CognitoStorage } from "../utils/CognitoStorage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface SignUpParams {
   fullName: string;
@@ -26,29 +26,23 @@ export class AuthService {
 
     const attributeList = [
       new CognitoUserAttribute({
-        Name: 'name',
-        Value: fullName
+        Name: "name",
+        Value: fullName,
       }),
       new CognitoUserAttribute({
-        Name: 'email',
-        Value: email
-      })
+        Name: "email",
+        Value: email,
+      }),
     ];
 
     return new Promise((resolve, reject) => {
-      userPool.signUp(
-        email,
-        password,
-        attributeList,
-        [],
-        (err, result) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve(result!);
+      userPool.signUp(email, password, attributeList, [], (err, result) => {
+        if (err) {
+          reject(err);
+          return;
         }
-      );
+        resolve(result!);
+      });
     });
   };
 
@@ -58,12 +52,12 @@ export class AuthService {
 
     const authenticationDetails = new AuthenticationDetails({
       Username: email,
-      Password: password
+      Password: password,
     });
 
     const userData = {
       Username: email,
-      Pool: userPool
+      Pool: userPool,
     };
 
     const cognitoUser = new CognitoUser(userData);
@@ -71,7 +65,7 @@ export class AuthService {
     return new Promise((resolve, reject) => {
       cognitoUser.authenticateUser(authenticationDetails, {
         onSuccess: async (result) => {
-          console.log('[AuthService] Login successful');
+          console.log("[AuthService] Login successful");
 
           // Force a sync of the tokens to storage
           try {
@@ -82,7 +76,6 @@ export class AuthService {
             const idToken = result.getIdToken().getJwtToken();
             const accessToken = result.getAccessToken().getJwtToken();
             const refreshToken = result.getRefreshToken().getToken();
-
             // Save the last authenticated user
             CognitoStorage.setItem(
               `CognitoIdentityServiceProvider.${clientId}.LastAuthUser`,
@@ -103,15 +96,15 @@ export class AuthService {
               refreshToken
             );
 
-            console.log('[AuthService] Tokens saved to storage');
+            console.log("[AuthService] Tokens saved to storage");
           } catch (error) {
-            console.error('[AuthService] Error saving tokens:', error);
+            console.error("[AuthService] Error saving tokens:", error);
           }
 
           resolve(cognitoUser);
         },
         onFailure: (err) => {
-          console.error('[AuthService] Login failed:', err);
+          console.error("[AuthService] Login failed:", err);
           reject(err);
         },
       });
@@ -128,16 +121,24 @@ export class AuthService {
 
       if (currentUser) {
         const username = currentUser.getUsername();
-        console.log('[AuthService] Signing out user:', username);
+        console.log("[AuthService] Signing out user:", username);
 
         // Clear specific tokens
         try {
-          CognitoStorage.removeItem(`CognitoIdentityServiceProvider.${clientId}.${username}.idToken`);
-          CognitoStorage.removeItem(`CognitoIdentityServiceProvider.${clientId}.${username}.accessToken`);
-          CognitoStorage.removeItem(`CognitoIdentityServiceProvider.${clientId}.${username}.refreshToken`);
-          CognitoStorage.removeItem(`CognitoIdentityServiceProvider.${clientId}.LastAuthUser`);
+          CognitoStorage.removeItem(
+            `CognitoIdentityServiceProvider.${clientId}.${username}.idToken`
+          );
+          CognitoStorage.removeItem(
+            `CognitoIdentityServiceProvider.${clientId}.${username}.accessToken`
+          );
+          CognitoStorage.removeItem(
+            `CognitoIdentityServiceProvider.${clientId}.${username}.refreshToken`
+          );
+          CognitoStorage.removeItem(
+            `CognitoIdentityServiceProvider.${clientId}.LastAuthUser`
+          );
         } catch (error) {
-          console.error('[AuthService] Error clearing specific tokens:', error);
+          console.error("[AuthService] Error clearing specific tokens:", error);
         }
 
         // Call SDK's signOut
@@ -146,13 +147,15 @@ export class AuthService {
 
       // Clear all Cognito data as a fallback
       const keys = await AsyncStorage.getAllKeys();
-      const cognitoKeys = keys.filter(key => key.includes('CognitoIdentityServiceProvider'));
+      const cognitoKeys = keys.filter((key) =>
+        key.includes("CognitoIdentityServiceProvider")
+      );
       if (cognitoKeys.length > 0) {
         await AsyncStorage.multiRemove(cognitoKeys);
-        console.log('[AuthService] Cleared all Cognito data from storage');
+        console.log("[AuthService] Cleared all Cognito data from storage");
       }
     } catch (error) {
-      console.error('[AuthService] Error during sign out:', error);
+      console.error("[AuthService] Error during sign out:", error);
     }
 
     return Promise.resolve();
@@ -163,20 +166,20 @@ export class AuthService {
     try {
       // Wait for storage to be loaded
       if (!CognitoStorage.isLoaded()) {
-        console.log('[AuthService] Storage not loaded, loading now...');
+        console.log("[AuthService] Storage not loaded, loading now...");
         try {
           await CognitoStorage.loadDataToMemory();
-          console.log('[AuthService] Storage loaded successfully');
+          console.log("[AuthService] Storage loaded successfully");
         } catch (error) {
-          console.log('[AuthService] Failed to load storage data:', error);
+          console.log("[AuthService] Failed to load storage data:", error);
           return null;
         }
       }
 
       const cognitoUser = userPool.getCurrentUser();
-      console.log('[AuthService] Current user:', cognitoUser);
+      console.log("[AuthService] Current user:", cognitoUser);
       if (!cognitoUser) {
-        console.log('[AuthService] No current user found');
+        console.log("[AuthService] No current user found");
         return null;
       }
 
@@ -184,13 +187,17 @@ export class AuthService {
       return new Promise((resolve) => {
         cognitoUser.getSession((err: Error | null, session: any) => {
           if (err) {
-            console.error('[AuthService] Session is invalid:', err);
+            console.error("[AuthService] Session is invalid:", err);
             // Handle missing token errors by signing out and clearing storage
-            if (err.message && (
-              err.message.includes('Missing tokens') ||
-              err.message.includes('missing an ID Token') ||
-              err.message.includes('No token found'))) {
-              console.log('[AuthService] Missing tokens, clearing session data');
+            if (
+              err.message &&
+              (err.message.includes("Missing tokens") ||
+                err.message.includes("missing an ID Token") ||
+                err.message.includes("No token found"))
+            ) {
+              console.log(
+                "[AuthService] Missing tokens, clearing session data"
+              );
               cognitoUser.signOut();
             }
             resolve(null);
@@ -198,16 +205,19 @@ export class AuthService {
           }
 
           if (session && session.isValid()) {
-            console.log('[AuthService] Valid session found for user:', cognitoUser.getUsername());
+            console.log(
+              "[AuthService] Valid session found for user:",
+              cognitoUser.getUsername()
+            );
             resolve(cognitoUser);
           } else {
-            console.log('[AuthService] Session exists but is not valid');
+            console.log("[AuthService] Session exists but is not valid");
             resolve(null);
           }
         });
       });
     } catch (error) {
-      console.error('[AuthService] Unexpected error in getCurrentUser:', error);
+      console.error("[AuthService] Unexpected error in getCurrentUser:", error);
       return null;
     }
   };
@@ -216,7 +226,7 @@ export class AuthService {
   static forgotPassword = (email: string): Promise<void> => {
     const userData = {
       Username: email,
-      Pool: userPool
+      Pool: userPool,
     };
 
     const cognitoUser = new CognitoUser(userData);
@@ -228,16 +238,20 @@ export class AuthService {
         },
         onFailure: (err) => {
           reject(err);
-        }
+        },
       });
     });
   };
 
   // Confirm new password with verification code
-  static confirmNewPassword = (email: string, verificationCode: string, newPassword: string): Promise<void> => {
+  static confirmNewPassword = (
+    email: string,
+    verificationCode: string,
+    newPassword: string
+  ): Promise<void> => {
     const userData = {
       Username: email,
-      Pool: userPool
+      Pool: userPool,
     };
 
     const cognitoUser = new CognitoUser(userData);
@@ -249,16 +263,19 @@ export class AuthService {
         },
         onFailure: (err) => {
           reject(err);
-        }
+        },
       });
     });
   };
 
   // Confirm user registration with verification code
-  static confirmRegistration = (email: string, verificationCode: string): Promise<void> => {
+  static confirmRegistration = (
+    email: string,
+    verificationCode: string
+  ): Promise<void> => {
     const userData = {
       Username: email,
-      Pool: userPool
+      Pool: userPool,
     };
 
     const cognitoUser = new CognitoUser(userData);
@@ -340,7 +357,7 @@ export class AuthService {
   static resendConfirmationCode = (email: string): Promise<void> => {
     const userData = {
       Username: email,
-      Pool: userPool
+      Pool: userPool,
     };
 
     const cognitoUser = new CognitoUser(userData);
@@ -352,6 +369,33 @@ export class AuthService {
           return;
         }
         resolve();
+      });
+    });
+  };
+
+  // Add this to AuthService class
+  static getUserEmail = async (): Promise<string | null> => {
+    const currentUser = userPool.getCurrentUser();
+    if (!currentUser) return null;
+
+    return new Promise((resolve) => {
+      currentUser.getSession((err: Error | null, session: any) => {
+        if (err || !session?.isValid()) {
+          resolve(null);
+          return;
+        }
+
+        currentUser.getUserAttributes((attrErr, attributes) => {
+          if (attrErr || !attributes) {
+            resolve(null);
+            return;
+          }
+
+          const emailAttr = attributes.find(
+            (attr) => attr.getName() === "email"
+          );
+          resolve(emailAttr?.getValue() || null);
+        });
       });
     });
   };

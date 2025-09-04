@@ -87,7 +87,7 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
             </View>
             <SimpleProgressCircle
               progress={progress}
-              size={60}
+              size={90}
               color="#fff"
               current={goal.goal_progress}
               target={goal.goal_target}

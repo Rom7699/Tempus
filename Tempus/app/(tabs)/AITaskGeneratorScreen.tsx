@@ -14,8 +14,6 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { AuthService } from "../../services/AuthService";
-import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system";
 // Import as fallback data
 import defaultHealthData from "../../Analyzed_Health.json";
 import { useApi } from "../../context/ApiContext";
@@ -37,11 +35,6 @@ export default function AITaskGeneratorScreen() {
   const [tasks, setTasks] = useState<AITask[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Health data state
-  const [uploadedHealthData, setUploadedHealthData] =
-    useState<HealthData | null>(null);
-  const [healthDataFileName, setHealthDataFileName] = useState<string>("");
-  const [isUploadingHealth, setIsUploadingHealth] = useState(false);
 
   // Current task being added
   const [currentTaskName, setCurrentTaskName] = useState("");
@@ -51,87 +44,11 @@ export default function AITaskGeneratorScreen() {
 
   const { refreshTasks } = useApi();
 
-  // Upload health data file
-  const uploadHealthData = async () => {
-    try {
-      setIsUploadingHealth(true);
 
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "application/json",
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const file = result.assets[0];
-
-        // Validate file type
-        if (!file.name?.endsWith(".json")) {
-          Alert.alert("Error", "Please select a JSON file");
-          return;
-        }
-
-        // Read and parse the file
-        const fileContent = await FileSystem.readAsStringAsync(file.uri);
-        const parsedData = JSON.parse(fileContent);
-
-        // Basic validation of health data structure
-        if (
-          !parsedData.days &&
-          !parsedData.monthly_avg &&
-          !parsedData.analysis
-        ) {
-          Alert.alert(
-            "Invalid File",
-            "The selected file doesn't appear to be a valid health data file. Please ensure it contains 'days', 'monthly_avg', or 'analysis' data."
-          );
-          return;
-        }
-
-        setUploadedHealthData(parsedData);
-        setHealthDataFileName(file.name);
-
-        Alert.alert(
-          "Success",
-          `Health data file "${file.name}" uploaded successfully!`
-        );
-      }
-    } catch (error) {
-      console.error("Error uploading health data:", error);
-      Alert.alert(
-        "Error",
-        "Failed to upload health data file. Please ensure the file is a valid JSON format."
-      );
-    } finally {
-      setIsUploadingHealth(false);
-    }
-  };
-
-  // Clear uploaded health data
-  const clearHealthData = () => {
-    Alert.alert(
-      "Clear Health Data",
-      "Are you sure you want to remove the uploaded health data? The app will use default health data instead.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Clear",
-          style: "destructive",
-          onPress: () => {
-            setUploadedHealthData(null);
-            setHealthDataFileName("");
-          },
-        },
-      ]
-    );
-  };
-
-  // Get health data (uploaded or default)
+  // Get health data (default)
   const getHealthData = (): HealthData => {
-    return uploadedHealthData || defaultHealthData;
+    return defaultHealthData;
   };
 
   // Add a new task to the list
@@ -224,12 +141,12 @@ export default function AITaskGeneratorScreen() {
         return;
       }
 
-      // Use uploaded health data or default
+      // Use default health data
       const healthData = getHealthData();
-      console.log(
-        "Using health data:",
-        uploadedHealthData ? "Uploaded file" : "Default data"
-      );
+      console.log("Using health data:", "Default data");
+
+      const userEmail = await AuthService.getUserEmail();
+      const userId = userEmail || "unknown-user";
 
       // Call Lambda function to generate AI schedule and save to database
       const response = await fetch(
@@ -245,6 +162,7 @@ export default function AITaskGeneratorScreen() {
             monthly_avg: healthData.monthly_avg,
             analysis: healthData.analysis,
             tasks: tasks,
+            userId: userId,
           }),
         }
       );
@@ -328,62 +246,6 @@ export default function AITaskGeneratorScreen() {
           </Text>
         </View>
 
-        {/* NEW: Health Data Upload Section */}
-        <View style={styles.healthDataCard}>
-          <Text style={styles.sectionTitle}>Health Data (Optional)</Text>
-
-          {!uploadedHealthData ? (
-            <View style={styles.uploadContainer}>
-              <View style={styles.uploadInfo}>
-                <Ionicons name="document-outline" size={20} color="#666" />
-                <Text style={styles.uploadInfoText}>
-                  Upload your health data JSON file for more personalized
-                  scheduling, or use default data.
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.uploadButton}
-                onPress={uploadHealthData}
-                disabled={isUploadingHealth}
-              >
-                {isUploadingHealth ? (
-                  <ActivityIndicator color="#5D87FF" size="small" />
-                ) : (
-                  <Ionicons
-                    name="cloud-upload-outline"
-                    size={20}
-                    color="#5D87FF"
-                  />
-                )}
-                <Text style={styles.uploadButtonText}>
-                  {isUploadingHealth ? "Uploading..." : "Upload Health Data"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.uploadedContainer}>
-              <View style={styles.uploadedInfo}>
-                <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-                <View style={styles.uploadedTextContainer}>
-                  <Text style={styles.uploadedFileName}>
-                    {healthDataFileName}
-                  </Text>
-                  <Text style={styles.uploadedStatus}>
-                    Health data uploaded successfully
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={styles.clearButton}
-                onPress={clearHealthData}
-              >
-                <Ionicons name="trash-outline" size={18} color="#FF5252" />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
 
         {/* Add Task Form - existing code remains the same */}
         <View style={styles.formCard}>
@@ -807,86 +669,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "600",
-  },
-  healthDataCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  uploadContainer: {
-    gap: 12,
-  },
-  uploadInfo: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    padding: 12,
-    backgroundColor: "#f1f4fe",
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: "#5D87FF",
-  },
-  uploadInfoText: {
-    flex: 1,
-    fontSize: 13,
-    color: "#666",
-    lineHeight: 18,
-  },
-  uploadButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#5D87FF",
-    backgroundColor: "#f8f9ff",
-  },
-  uploadButtonText: {
-    color: "#5D87FF",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  uploadedContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    backgroundColor: "#f0f8f0",
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: "#4CAF50",
-  },
-  uploadedInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flex: 1,
-  },
-  uploadedTextContainer: {
-    flex: 1,
-  },
-  uploadedFileName: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#333",
-  },
-  uploadedStatus: {
-    fontSize: 12,
-    color: "#4CAF50",
-    marginTop: 2,
-  },
-  clearButton: {
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: "#fff",
   },
   durationContainer: {
     gap: 12,
