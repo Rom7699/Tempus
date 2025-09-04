@@ -20,6 +20,7 @@ interface ApiContextType {
   taskLoading: boolean;
   taskError: string | null;
   addTask: (taskData: BaseTask) => Promise<any>;
+  addTaskArr: (tasksData: BaseTask[]) => Promise<any>;
   deleteTask: (taskId: string) => Promise<any>;
   updateTask: (updatedData: UpdateTaskInput) => Promise<any>;
   getTaskById: (taskId: string) => Promise<any>;
@@ -177,6 +178,20 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     } catch (error: any) {
       console.error("Error adding task:", error);
       throw new Error(error.response?.data?.message || "Failed to add task");
+    }
+  };
+
+  const addTaskArrImpl = async (
+    tasksData: BaseTask[]
+  ): Promise<any> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await axios.post(`${apiBase}/tasks`, { tasks: tasksData }, { headers });
+      console.log(`${tasksData.length} tasks added successfully`);
+      return response;
+    } catch (error: any) {
+      console.error("Error adding tasks:", error);
+      throw new Error(error.response?.data?.message || "Failed to add tasks");
     }
   };
 
@@ -623,6 +638,7 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     taskLoading,
     taskError,
     addTask: addTaskImpl,
+    addTaskArr: addTaskArrImpl,
     deleteTask: deleteTaskImpl,
     updateTask: updateTaskImpl,
     getTaskById: getTaskByIdImpl,
