@@ -9,7 +9,6 @@ import {
   StatusBar,
   ActivityIndicator,
   Alert,
-  Dimensions,
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,13 +23,11 @@ import TaskDetailItem from '../components/NewTaskItem';
 import DisplayTaskModal from '../components/DisplayTaskModal';
 import { createGradient } from '../utils/colorUtils';
 
-const { width } = Dimensions.get('window');
-
 
 
 export default function GoalDetailsScreen() {
   const { goalId } = useLocalSearchParams<{ goalId: string }>();
-  const { getGoalById, getTasksByGoalId, updateTask, updateGoal, deleteGoal } = useApi();
+  const { getGoalById, getTasksByGoalId, updateTask, updateGoal, deleteGoal, deleteTask } = useApi();
   
   const [goal, setGoal] = useState<Goal | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -174,7 +171,7 @@ export default function GoalDetailsScreen() {
             // Set completion date if just completed, clear if no longer completed
             completion_date: isNowCompleted && !wasCompleted 
               ? new Date().toISOString() 
-              : (!isNowCompleted && wasCompleted ? null : prev.completion_date)
+              : (!isNowCompleted && wasCompleted ? undefined : prev.completion_date)
           };
         });
       }
@@ -519,7 +516,7 @@ export default function GoalDetailsScreen() {
                   <Ionicons name="trophy-outline" size={20} color="#666" />
                   <Text style={styles.infoLabel}>Cycle Success</Text>
                   <Text style={[styles.infoValue, { color: goal.cycles_completed > 0 ? '#4CAF50' : '#999' }]}>
-                    {goal.cycles_completed}/{goal.total_cycles || 0} ({goal.total_cycles > 0 ? Math.round((goal.cycles_completed / goal.total_cycles) * 100) : 0}%)
+                    {goal.cycles_completed}/{goal.total_cycles || 0} ({(goal.total_cycles || 0) > 0 ? Math.round((goal.cycles_completed / (goal.total_cycles || 1)) * 100) : 0}%)
                   </Text>
                 </View>
               )}
@@ -662,11 +659,24 @@ export default function GoalDetailsScreen() {
             setTaskModalVisible(false);
             setSelectedTask(null);
           }}
-          onUpdate={async () => {
-            await loadGoalData();
+          onEdit={async (updateData) => {
+            try {
+              await updateTask(updateData);
+              await loadGoalData();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to update task');
+            }
           }}
-          onDelete={async () => {
-            await loadGoalData();
+          onToggle={(task, isCompleted) => handleTaskToggle(task.task_id)}
+          onDelete={async (taskId) => {
+            try {
+              await deleteTask(taskId);
+              await loadGoalData();
+              setTaskModalVisible(false);
+              setSelectedTask(null);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete task');
+            }
           }}
         />
       )}
