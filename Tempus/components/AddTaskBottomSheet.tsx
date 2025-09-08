@@ -460,15 +460,22 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
         return `${hours}:${minutes}`;
       };
 
+      const formatDateString = (date: Date) => {
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, "0");
+        const day = date.getDate().toString().padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+
       if (isEditMode && editTask) {
         // Update existing task
         const updateData: UpdateTaskInput = {
           task_id: editTask.task_id,
           task_name: taskName.trim(),
           task_description: description.trim(),
-          task_start_date: startDate.toISOString().split("T")[0],
+          task_start_date: formatDateString(startDate),
           task_start_time: formatTimeString(startDate),
-          task_end_date: endDate.toISOString().split("T")[0],
+          task_end_date: formatDateString(endDate),
           task_end_time: formatTimeString(endDate),
           task_reminder: reminderEnabled,
           task_location: location.trim(),
@@ -494,9 +501,9 @@ const AddTaskBottomSheet: React.FC<AddTaskBottomSheetProps> = ({
         const taskData: BaseTask = {
           task_name: taskName.trim(),
           task_description: description.trim(),
-          task_start_date: startDate.toISOString().split("T")[0],
+          task_start_date: formatDateString(startDate),
           task_start_time: formatTimeString(startDate),
-          task_end_date: endDate.toISOString().split("T")[0],
+          task_end_date: formatDateString(endDate),
           task_end_time: formatTimeString(endDate),
           task_reminder: reminderEnabled,
           task_location: location.trim(),

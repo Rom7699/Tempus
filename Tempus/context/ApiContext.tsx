@@ -4,12 +4,14 @@ import React, {
   useState,
   useCallback,
   ReactNode,
+  useEffect,
 } from "react";
 import axios from "axios";
 import { AuthService } from "../services/AuthService";
 import { BaseTask, Task, UpdateTaskInput } from "../types/tasks";
 import { BaseList, List } from "../types/lists";
 import { BaseGoal, Goal, UpdateGoalInput } from "../types/goals";
+import NotificationService, { PushToken } from "../services/NotificationService";
 
 const apiBase = "https://b1s33elek9.execute-api.us-east-1.amazonaws.com";
 
@@ -69,6 +71,12 @@ interface ApiContextType {
   refreshTasks: (month?: number, year?: number) => Promise<void>;
   refreshLists: () => Promise<void>;
   refreshGoals: () => Promise<void>;
+
+  // Notifications
+  registerPushNotifications: () => Promise<PushToken | null>;
+  savePushToken: (token: string, tokenType: string) => Promise<any>;
+  setupNotificationListeners: () => () => void;
+  scheduleTaskReminder: (taskId: string, action: 'create' | 'delete') => Promise<any>;
 }
 
 // Create the context with a default value
@@ -174,6 +182,25 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
       const headers = await getAuthHeaders();
       const response = await axios.post(`${apiBase}/task`, taskData, { headers });
       console.log("Task added successfully");
+      
+      // If the task has reminders enabled, schedule them
+      if (taskData.task_reminder) {
+        try {
+          const taskId = response.data?.task?.taskId
+          console.log(`Extracted taskId: ${taskId}`);
+          
+          if (taskId) {
+            await scheduleTaskReminderImpl(taskId, 'create');
+          } else {
+            console.warn(`Missing taskId: ${taskId}`);
+          }
+        } catch (reminderError: any) {
+          console.error("Failed to schedule reminders:", reminderError);
+          console.error("Error details:", reminderError.response?.data || reminderError.message);
+          // Don't fail the entire task creation if reminder scheduling fails
+        }
+      }
+      
       return response;
     } catch (error: any) {
       console.error("Error adding task:", error);
@@ -215,6 +242,20 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
         updatedData,
         { headers }
       );
+      
+      // Handle reminders based on update
+      if (updatedData.task_reminder !== undefined) {
+        try {
+          const taskId = updatedData.task_id;
+          const action = updatedData.task_reminder ? 'create' : 'delete';
+          
+          await scheduleTaskReminderImpl(taskId, action);
+        } catch (reminderError: any) {
+          console.error("Failed to manage reminders:", reminderError);
+          // Don't fail the entire task update if reminder management fails
+        }
+      }
+      
       // After updating a task, refresh the task list
       await refreshTasks();
       return response;
@@ -631,6 +672,80 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     }
   };
 
+  // Notifications
+  const registerPushNotificationsImpl = async (): Promise<PushToken | null> => {
+    try {
+      const pushToken = await NotificationService.registerForPushNotifications();
+      
+      if (pushToken) {
+        // Save token to backend
+        await savePushTokenImpl(pushToken.token);
+        console.log('Push token registered and saved:', pushToken.token);
+      }
+      
+      return pushToken;
+    } catch (error: any) {
+      console.error('Failed to register push notifications:', error);
+      return null;
+    }
+  };
+
+  const savePushTokenImpl = async (token: string, tokenType: string = 'expo'): Promise<any> => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await axios.post(
+        `${apiBase}/notifications/register-token`,
+        { pushToken: token, tokenType: tokenType },
+        { headers }
+      );
+      console.log('Push token saved successfully');
+      return response;
+    } catch (error: any) {
+      console.error('Failed to save push token:', error);
+      throw new Error(error.response?.data?.message || 'Failed to save push token');
+    }
+  };
+
+  const setupNotificationListenersImpl = (): (() => void) => {
+    return NotificationService.setupNotificationListeners(
+      (notification) => {
+        console.log('Notification received in app:', notification);
+        // Handle foreground notification
+      },
+      (response) => {
+        console.log('Notification tapped:', response);
+        // Handle notification tap - could navigate to specific task/goal
+        const data = response.notification.request.content.data;
+        if (data?.taskId) {
+          // Navigate to task details or goal details
+          console.log('Navigate to task:', data.taskId);
+        }
+      }
+    );
+  };
+
+  const scheduleTaskReminderImpl = async (taskId: string, action: 'create' | 'delete'): Promise<any> => {
+    try {
+      const headers = await getAuthHeaders();
+      console.log(`${action === 'create' ? 'Scheduling' : 'Deleting'} reminders for task ${taskId}`);
+      
+      const response = await axios.post(
+        `${apiBase}/notifications/schedule-reminders`,
+        {
+          taskId: taskId,
+          action: action
+        },
+        { headers }
+      );
+      
+      console.log(`Task reminders ${action === 'create' ? 'scheduled' : 'deleted'} successfully for task ${taskId}`);
+      return response;
+    } catch (error: any) {
+      console.error(`Failed to ${action} task reminders:`, error);
+      throw new Error(error.response?.data?.message || `Failed to ${action} task reminders`);
+    }
+  };
+
   // Provide context value
   const contextValue: ApiContextType = {
     // Tasks
@@ -676,6 +791,12 @@ export const ApiProvider: React.FC<ApiProviderProps> = ({ children }) => {
     refreshTasks,
     refreshLists,
     refreshGoals,
+
+    // Notifications
+    registerPushNotifications: registerPushNotificationsImpl,
+    savePushToken: savePushTokenImpl,
+    setupNotificationListeners: setupNotificationListenersImpl,
+    scheduleTaskReminder: scheduleTaskReminderImpl,
   };
 
   return (

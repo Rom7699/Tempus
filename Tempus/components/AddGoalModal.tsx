@@ -1363,6 +1363,12 @@ const styles = StyleSheet.create({
   switch: {
     transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
   },
+  datePickerWrapper: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
 });
 
 export default AddGoalModal;
