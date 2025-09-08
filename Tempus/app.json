@@ -20,6 +20,10 @@
       },
       "package": "com.anonymous.Tempus"
     },
+    "notification": {
+      "icon": "./assets/images/TempusIcon.png",
+      "color": "#ffffff"
+    },
     "web": {
       "bundler": "metro",
       "output": "static",
