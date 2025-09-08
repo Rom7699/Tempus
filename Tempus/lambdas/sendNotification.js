@@ -6,7 +6,6 @@ const apiBase = "https://b1s33elek9.execute-api.us-east-1.amazonaws.com";
 
 exports.handler = async (event) => {
   try {
-    console.log("Received event:", JSON.stringify(event, null, 2));
     
     // Get user ID from API Gateway JWT authorizer
     const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
@@ -29,8 +28,6 @@ exports.handler = async (event) => {
       };
     }
 
-    console.log(`Sending notification to user ${userId}: ${title}`);
-
     // Prepare notification data for sendExpoNotification Lambda
     const notificationPayload = {
       userId: userId,
@@ -43,8 +40,6 @@ exports.handler = async (event) => {
       sound: sound,
       priority: priority
     };
-
-    console.log('Calling sendNotificationDirect via API Gateway:', JSON.stringify(notificationPayload, null, 2));
 
     try {
       // Call sendNotificationDirect via API Gateway
@@ -59,8 +54,6 @@ exports.handler = async (event) => {
         }
       );
 
-      console.log('SendNotificationDirect API response:', response.status, response.data);
-
       return {
         statusCode: 200,
         body: JSON.stringify({
@@ -72,11 +65,7 @@ exports.handler = async (event) => {
       };
 
     } catch (apiError) {
-      console.error('API call failed:', apiError.message);
-      
       if (apiError.response) {
-        // API returned an error response
-        console.error('API error response:', apiError.response.status, apiError.response.data);
         return {
           statusCode: apiError.response.status,
           body: JSON.stringify(apiError.response.data),

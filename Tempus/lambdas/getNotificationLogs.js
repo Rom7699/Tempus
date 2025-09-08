@@ -22,11 +22,8 @@ exports.handler = async (event) => {
       offset = '0'
     } = queryParams;
 
-    console.log(`Getting notification logs for user ${userId}`);
-
     const pool = getPool();
     
-    // Build dynamic query based on filters
     let query = `
       SELECT id, notification_type, title, body, status, expo_ticket_id, error_message, created_at
       FROM notification_logs 
@@ -36,7 +33,6 @@ exports.handler = async (event) => {
     const queryParams_array = [userId];
     let paramIndex = 2;
 
-    // Add optional filters
     if (notification_type) {
       query += ` AND notification_type = $${paramIndex}`;
       queryParams_array.push(notification_type);
@@ -49,12 +45,8 @@ exports.handler = async (event) => {
       paramIndex++;
     }
 
-    // Add ordering and pagination
     query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     queryParams_array.push(parseInt(limit), parseInt(offset));
-
-    console.log('Executing query:', query);
-    console.log('With parameters:', queryParams_array);
 
     const result = await pool.query(query, queryParams_array);
 
@@ -81,8 +73,6 @@ exports.handler = async (event) => {
 
     const countResult = await pool.query(countQuery, countParams);
     const totalCount = parseInt(countResult.rows[0].total);
-
-    console.log(`Retrieved ${result.rows.length} notification logs out of ${totalCount} total`);
     
     return {
       statusCode: 200,

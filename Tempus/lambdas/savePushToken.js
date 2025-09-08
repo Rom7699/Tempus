@@ -5,7 +5,6 @@ exports.handler = async (event) => {
   const client = await pool.connect();
   
   try {
-    console.log("Received event:", JSON.stringify(event, null, 2));
     
     const userId = event.requestContext?.authorizer?.jwt?.claims?.sub;
     if (!userId) {
@@ -24,8 +23,6 @@ exports.handler = async (event) => {
         body: JSON.stringify({ message: 'pushToken is required' }),
       };
     }
-
-    console.log(`Saving push token for user ${userId}: ${pushToken}`);
 
     await client.query('BEGIN');
 
@@ -47,7 +44,6 @@ exports.handler = async (event) => {
       `;
       
       const result = await client.query(updateQuery, [pushToken, userId, tokenType]);
-      console.log('Push token updated successfully');
       
       await client.query('COMMIT');
       
@@ -67,7 +63,6 @@ exports.handler = async (event) => {
       `;
       
       const result = await client.query(insertQuery, [userId, pushToken, tokenType]);
-      console.log('Push token saved successfully');
       
       await client.query('COMMIT');
       

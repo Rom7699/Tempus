@@ -2,7 +2,6 @@ const { getPool } = require('/opt/nodejs/db');
 
 exports.handler = async (event) => {
   try {
-    console.log("Received event:", JSON.stringify(event, null, 2));
     
     const userId = event.pathParameters?.userId;
     const tokenType = event.queryStringParameters?.tokenType || 'expo';
@@ -13,8 +12,6 @@ exports.handler = async (event) => {
         body: JSON.stringify({ message: 'userId is required in path parameters' }),
       };
     }
-
-    console.log(`Getting push token for user ${userId}, type: ${tokenType}`);
 
     const pool = getPool();
     
@@ -39,8 +36,6 @@ exports.handler = async (event) => {
       };
     }
 
-    console.log('Push token retrieved successfully');
-    
     return {
       statusCode: 200,
       body: JSON.stringify({

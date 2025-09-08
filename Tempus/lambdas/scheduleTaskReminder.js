@@ -28,7 +28,6 @@ exports.handler = async (event) => {
       action = event.action || 'create';
     }
     
-    console.log(`Parsed values - taskId: ${taskId}, userId: ${userId}, action: ${action}`);
     
     if (!taskId || !userId) {
       return {
@@ -65,13 +64,9 @@ exports.handler = async (event) => {
     
     // If action is delete, remove existing reminder records from database
     if (action === 'delete') {
-      console.log(`Deleting reminder records for task ${taskId}`);
-      
-      try {
+        try {
         const deleteQuery = 'DELETE FROM task_reminders WHERE task_id = $1';
         const deleteResult = await pool.query(deleteQuery, [taskId]);
-        
-        console.log(`Deleted ${deleteResult.rowCount} reminder records for task ${taskId}`);
         
         return {
           statusCode: 200,
@@ -95,7 +90,6 @@ exports.handler = async (event) => {
 
     // If task doesn't have reminder enabled, skip scheduling
     if (!task.task_reminder) {
-      console.log(`Task ${taskId} doesn't have reminders enabled`);
       return {
         statusCode: 200,
         body: JSON.stringify({
@@ -105,9 +99,6 @@ exports.handler = async (event) => {
       };
     }
 
-    // Calculate reminder times
-    console.log(`Raw task data - date: ${task.task_start_date}, time: ${task.task_start_time}`);
-    
     // Handle database date format - convert Date object to ISO date string
     let dateString;
     if (task.task_start_date instanceof Date) {
@@ -119,21 +110,13 @@ exports.handler = async (event) => {
       dateString = task.task_start_date;
     }
     
-    console.log(`Formatted date string: ${dateString}`);
-    
     // Parse date and time safely with Israel timezone (UTC+3) conversion
-    console.log(`Raw input: ${dateString}T${task.task_start_time}`);
-    
     // Create date assuming it's in Israel timezone (UTC+3)
     const taskDateTimeLocal = new Date(`${dateString}T${task.task_start_time}`);
     
     // Convert from Israel time (UTC+3) to UTC by subtracting 3 hours
     const taskDateTime = new Date(taskDateTimeLocal.getTime() - (3 * 60 * 60 * 1000));
     const now = new Date();
-    
-    console.log(`Task datetime (Israel input): ${taskDateTimeLocal.toISOString()}`);
-    console.log(`Task datetime (converted to UTC): ${taskDateTime.toISOString()}`);
-    console.log(`Current time (UTC): ${now.toISOString()}`);
     
     // Check if date parsing was successful
     if (isNaN(taskDateTime.getTime())) {
@@ -152,7 +135,6 @@ exports.handler = async (event) => {
 
     // Skip if task is in the past
     if (taskDateTime <= now) {
-      console.log(`Task ${taskId} is in the past, skipping reminder scheduling`);
       return {
         statusCode: 200,
         body: JSON.stringify({
@@ -163,10 +145,7 @@ exports.handler = async (event) => {
       };
     }
 
-    console.log('📋 PROCESSING TASK REMINDERS - Database Approach');
-
     // First, delete any existing reminders for this task (handles updates)
-    console.log(`Removing existing reminder records for task ${taskId}`);
     await pool.query('DELETE FROM task_reminders WHERE task_id = $1', [taskId]);
 
     // Default reminder: 5 minutes before task (configurable for future)
@@ -175,7 +154,6 @@ exports.handler = async (event) => {
     
     // Skip if reminder time is in the past
     if (reminderTime <= now) {
-      console.log(`⚠️  Skipping ${reminderMinutes}min reminder - time is in the past`);
       return {
         statusCode: 200,
         body: JSON.stringify({
@@ -210,8 +188,6 @@ exports.handler = async (event) => {
       
       const reminderId = insertResult.rows[0].reminder_id;
       
-      console.log(`✅ Scheduled ${reminderMinutes}min reminder: ${reminderTime.toISOString()} (ID: ${reminderId})`);
-      
       return {
         statusCode: 200,
         body: JSON.stringify({
@@ -229,7 +205,6 @@ exports.handler = async (event) => {
       };
       
     } catch (error) {
-      console.error(`❌ Failed to schedule ${reminderMinutes}min reminder:`, error.message);
       return {
         statusCode: 500,
         body: JSON.stringify({
