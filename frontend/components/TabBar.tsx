@@ -38,6 +38,8 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             iconName = "sparkles-outline";
           } else if (route.name === "Settings") {
             iconName = "settings-outline";
+          } else if (route.name === "HealthData") {
+            iconName = "heart-outline";
           }
 
           return (

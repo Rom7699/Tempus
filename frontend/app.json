@@ -20,6 +20,10 @@
       },
       "package": "com.anonymous.Tempus"
     },
+    "notification": {
+      "icon": "./assets/images/TempusIcon.png",
+      "color": "#ffffff"
+    },
     "web": {
       "bundler": "metro",
       "output": "static",
@@ -54,9 +58,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "5132446c-7775-4557-89b7-383b9eb91f8e"
+        "projectId": "58549f95-0c72-4c17-9edd-fb4e9475111e"
       }
     },
-    "owner": "rom7699"
+    "owner": "xtomerx001"
   }
 }
