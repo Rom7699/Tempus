@@ -292,50 +292,10 @@ export class AuthService {
   };
 
   // Get JWT token for current user session
-  // static getJWTToken = (): Promise<string | null> => {
-  //   return new Promise((resolve, reject) => {
-  //     const currentUser = userPool.getCurrentUser();
-
-  //     if (!currentUser) {
-  //       resolve(null);
-  //       return;
-  //     }
-
-  //     currentUser.getSession((err: Error | null, session: any) => {
-  //       if (err || !session.isValid()) {
-  //         resolve(null);
-  //         return;
-  //       }
-
-  //       const token = session.getIdToken().getJwtToken();
-  //       resolve(token);
-  //     });
-  //   });
-  // };
-
-
-  // Get JWT token for current user session // new for dev button sign in
   static getJWTToken = (): Promise<string | null> => {
     return new Promise((resolve, reject) => {
-      // Try storage first for dev mode
-      try {
-        const clientId = userPool.getClientId();
-        const lastAuthUser = CognitoStorage.getItem(`CognitoIdentityServiceProvider.${clientId}.LastAuthUser`);
-        
-        if (lastAuthUser) {
-          const idToken = CognitoStorage.getItem(`CognitoIdentityServiceProvider.${clientId}.${lastAuthUser}.idToken`);
-          if (idToken) {
-            console.log('[AuthService] Using token from storage (dev mode)');
-            resolve(idToken);
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('[AuthService] Error getting token from storage:', error);
-      }
-
-      // Fallback to normal Cognito flow
       const currentUser = userPool.getCurrentUser();
+
       if (!currentUser) {
         resolve(null);
         return;
@@ -352,6 +312,46 @@ export class AuthService {
       });
     });
   };
+
+
+  // // Get JWT token for current user session // new for dev button sign in
+  // static getJWTToken = (): Promise<string | null> => {
+  //   return new Promise((resolve, reject) => {
+  //     // Try storage first for dev mode
+  //     try {
+  //       const clientId = userPool.getClientId();
+  //       const lastAuthUser = CognitoStorage.getItem(`CognitoIdentityServiceProvider.${clientId}.LastAuthUser`);
+        
+  //       if (lastAuthUser) {
+  //         const idToken = CognitoStorage.getItem(`CognitoIdentityServiceProvider.${clientId}.${lastAuthUser}.idToken`);
+  //         if (idToken) {
+  //           console.log('[AuthService] Using token from storage (dev mode)');
+  //           resolve(idToken);
+  //           return;
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error('[AuthService] Error getting token from storage:', error);
+  //     }
+
+  //     // Fallback to normal Cognito flow
+  //     const currentUser = userPool.getCurrentUser();
+  //     if (!currentUser) {
+  //       resolve(null);
+  //       return;
+  //     }
+
+  //     currentUser.getSession((err: Error | null, session: any) => {
+  //       if (err || !session.isValid()) {
+  //         resolve(null);
+  //         return;
+  //       }
+
+  //       const token = session.getIdToken().getJwtToken();
+  //       resolve(token);
+  //     });
+  //   });
+  // };
 
   // Resend confirmation code
   static resendConfirmationCode = (email: string): Promise<void> => {
@@ -373,7 +373,6 @@ export class AuthService {
     });
   };
 
-  // Add this to AuthService class
   static getUserEmail = async (): Promise<string | null> => {
     const currentUser = userPool.getCurrentUser();
     if (!currentUser) return null;

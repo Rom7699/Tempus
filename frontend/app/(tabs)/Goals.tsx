@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { useApi } from '../../context/ApiContext';
 import { Goal, BaseGoal } from '../../types/goals';
 import AddGoalModal from '../../components/AddGoalModal';
@@ -35,10 +36,11 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
 
   const getGoalGradient = (color: string): [string, string] => {
     const gradient = createGradient(color || '#5D87FF');
-    // If goal is completed, use a slightly muted version
-    if (goal.is_completed) {
-      return [gradient[0] + '99', gradient[1] + 'CC'];
+    // If goal is inactive, use a more muted version
+    if (goal.is_active === false) {
+      return [gradient[0] + '66', gradient[1] + '99'];
     }
+    // Completed and active goals use the same styling
     return gradient;
   };
 
@@ -58,17 +60,31 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
                 <Text style={styles.goalTitle}>{goal.goal_name}</Text>
                 <View style={styles.goalMetaContainer}>
                   <Text style={styles.goalPeriod}>{goal.goal_type}</Text>
-                  {goal.goal_end_date && (
-                    <Text style={styles.goalEndDate}>
-                      • Ends {new Date(goal.goal_end_date).toLocaleDateString()}
-                    </Text>
-                  )}
+                  {/* All goals are cycling now */}
+                  <View style={styles.cycleIndicator}>
+                      <Ionicons name="refresh-circle" size={12} color="rgba(255, 255, 255, 0.8)" />
+                      <Text style={styles.cycleText}>cycling</Text>
+                      {goal.goal_type === 'daily' && goal.goal_selected_days && (
+                        <View style={styles.selectedDaysContainer}>
+                          <Text style={styles.selectedDaysText}>
+                            ({goal.goal_selected_days.map(day => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]).join(', ')})
+                          </Text>
+                        </View>
+                      )}
+                      {goal.goal_type !== 'daily' && goal.current_cycle_start && goal.current_cycle_end && (
+                        <View style={styles.cycleRangeContainer}>
+                          <Text style={styles.cycleRange}>
+                            ({new Date(goal.current_cycle_start).toLocaleDateString()} - {new Date(goal.current_cycle_end).toLocaleDateString()})
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                 </View>
               </View>
             </View>
             <SimpleProgressCircle
               progress={progress}
-              size={90}
+              size={60}
               color="#fff"
               current={goal.goal_progress}
               target={goal.goal_target}
@@ -79,6 +95,11 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
           
           <View style={styles.goalFooter}>
             <View style={styles.progressContainer}>
+              <View style={styles.progressTextRow}>
+                <Text style={styles.progressText}>
+                  {goal.goal_progress} / {goal.goal_target} completed
+                </Text>
+              </View>
               <View style={styles.progressBar}>
                 <View 
                   style={[
@@ -88,10 +109,15 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
                 />
               </View>
               <View style={styles.footerRow}>
-                <Text style={styles.progressText}>
-                  {goal.goal_progress} / {goal.goal_target} completed
-                </Text>
-                {goal.goal_progress < goal.goal_target && !goal.is_completed && (
+                <View style={styles.endDateInfo}>
+                  <Text style={styles.goalEndText}>
+                    {goal.goal_end_date ? 
+                      <>Ends {new Date(goal.goal_end_date).toLocaleDateString()}</> : 
+                      <>Forever <Ionicons name="infinite-outline" size={11} color="rgba(255, 255, 255, 0.6)" /></>
+                    }
+                  </Text>
+                </View>
+                {goal.goal_progress < goal.goal_target && !goal.is_completed && goal.is_active !== false && (
                   <TouchableOpacity 
                     style={styles.incrementButton} 
                     onPress={() => onShowIncrement && onShowIncrement(goal)}
@@ -110,6 +136,12 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onPress, onShowIncrement }) =
                   <View style={styles.completedBadge}>
                     <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
                     <Text style={styles.completedText}>Done!</Text>
+                  </View>
+                )}
+                {goal.is_active === false && !goal.is_completed && (
+                  <View style={styles.inactiveBadge}>
+                    <Ionicons name="pause-circle" size={16} color="#FF9800" />
+                    <Text style={styles.inactiveText}>Inactive</Text>
                   </View>
                 )}
               </View>
@@ -157,12 +189,19 @@ const GoalsScreen: React.FC = () => {
     refreshGoals();
   }, [refreshGoals]);
 
+  // Refresh goals when tab comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshGoals();
+    }, [refreshGoals])
+  );
+
   const filteredGoals = goals.filter((goal: Goal) => {
     // Filter by goal type
     if (goal.goal_type !== selectedPeriod) return false;
     
-    // Only show active (non-completed) goals in main list
-    if (goal.is_completed) return false;
+    // Only show active and incomplete goals in main list
+    if (goal.is_completed || goal.is_active === false) return false;
     
     // Filter by date range - only show active goals
     const now = new Date();
@@ -186,6 +225,11 @@ const GoalsScreen: React.FC = () => {
   };
 
   const handleShowIncrementModal = (goal: Goal) => {
+    // Don't allow increment for inactive goals
+    if (goal.is_active === false) {
+      Alert.alert('Goal Inactive', 'This goal is currently inactive. Activate it first to make progress.');
+      return;
+    }
     setSelectedGoal(goal);
     setShowIncrementModal(true);
   };
@@ -223,8 +267,8 @@ const GoalsScreen: React.FC = () => {
   const handleAddGoal = async (goalData: BaseGoal) => {
     try {
       await addGoal(goalData);
+      // Don't close modal here - let AddGoalModal handle the closing animation
       Alert.alert('Success', 'Goal created successfully!');
-      setShowAddGoalModal(false);
     } catch (error: any) {
       throw new Error(error.message || 'Failed to create goal');
     }
@@ -311,14 +355,20 @@ const GoalsScreen: React.FC = () => {
 
         {/* Goals List */}
         <View style={styles.goalsContainer}>
-          {!goalLoading && filteredGoals.map((goal: Goal) => (
-            <GoalCard
-              key={goal.goal_id.toString()}
-              goal={goal}
-              onPress={() => handleGoalPress(goal)}
-              onShowIncrement={handleShowIncrementModal}
-            />
-          ))}
+          {/* Show active goals with header */}
+          {!goalLoading && filteredGoals.length > 0 && (
+            <View style={styles.activeSection}>
+              <Text style={styles.activeSectionTitle}>Active Goals</Text>
+              {filteredGoals.map((goal: Goal) => (
+                <GoalCard
+                  key={goal.goal_id.toString()}
+                  goal={goal}
+                  onPress={() => handleGoalPress(goal)}
+                  onShowIncrement={handleShowIncrementModal}
+                />
+              ))}
+            </View>
+          )}
           
           {/* Show completed goals separately */}
           {!goalLoading && goals.filter((goal: Goal) => 
@@ -328,6 +378,25 @@ const GoalsScreen: React.FC = () => {
               <Text style={styles.completedSectionTitle}>Completed Goals</Text>
               {goals.filter((goal: Goal) => 
                 goal.goal_type === selectedPeriod && goal.is_completed
+              ).map((goal: Goal) => (
+                <GoalCard
+                  key={goal.goal_id.toString()}
+                  goal={goal}
+                  onPress={() => handleGoalPress(goal)}
+                  onShowIncrement={handleShowIncrementModal}
+                />
+              ))}
+            </View>
+          )}
+
+          {/* Show inactive goals separately */}
+          {!goalLoading && goals.filter((goal: Goal) => 
+            goal.goal_type === selectedPeriod && !goal.is_completed && goal.is_active === false
+          ).length > 0 && (
+            <View style={styles.inactiveSection}>
+              <Text style={styles.inactiveSectionTitle}>Inactive Goals</Text>
+              {goals.filter((goal: Goal) => 
+                goal.goal_type === selectedPeriod && !goal.is_completed && goal.is_active === false
               ).map((goal: Goal) => (
                 <GoalCard
                   key={goal.goal_id.toString()}
@@ -538,10 +607,25 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     textTransform: 'capitalize',
   },
+  cycleIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 6,
+  },
+  cycleText: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginLeft: 2,
+  },
+  endDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 6,
+  },
   goalEndDate: {
     fontSize: 11,
     color: 'rgba(255, 255, 255, 0.6)',
-    marginLeft: 4,
+    marginLeft: 2,
   },
   goalDescription: {
     fontSize: 14,
@@ -657,6 +741,29 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingLeft: 4,
   },
+  inactiveSection: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  inactiveSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF9800',
+    marginBottom: 12,
+    paddingLeft: 4,
+  },
+  activeSection: {
+    marginBottom: 16,
+  },
+  activeSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2196F3',
+    marginBottom: 12,
+    paddingLeft: 4,
+  },
   completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -668,8 +775,50 @@ const styles = StyleSheet.create({
   completedText: {
     fontSize: 12,
     color: '#4CAF50',
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  inactiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  inactiveText: {
+    fontSize: 12,
+    color: '#FF9800',
     fontWeight: '600',
     marginLeft: 4,
+  },
+  progressTextRow: {
+    marginBottom: 8,
+  },
+  endDateInfo: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  goalEndText: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 6,
+    marginBottom: -4,
+    marginLeft: 4,
+  },
+  cycleRangeContainer: {
+    marginLeft: 4,
+  },
+  cycleRange: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+  selectedDaysContainer: {
+    marginLeft: 4,
+  },
+  selectedDaysText: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
 });
 
